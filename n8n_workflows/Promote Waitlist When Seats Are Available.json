@@ -1,0 +1,265 @@
+﻿{
+  "name": "Promote Waitlist When Seats Are Available",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "id": "ed59247e-8950-495f-bdb8-89014ee82ec7",
+      "name": "Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/flight_class_inventory",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "available_seats",
+              "value": "gt.0"
+            },
+            {
+              "name": "select",
+              "value": "flight_id,seat_class,available_seats"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "REPLACE_WITH_YOUR_SUPABASE_API_KEY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer REPLACE_WITH_YOUR_SUPABASE_SECRET"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "150b7068-9817-4871-b838-ac92c002c8b1",
+      "name": "Get Available Inventory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nif (items.length === 1 && Array.isArray(items[0].json)) {\n  return items[0].json.map(row => ({ json: row }));\n}\n\nreturn items;"
+      },
+      "id": "0546d568-6915-404f-af9f-be958c328559",
+      "name": "Normalize Inventory Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/waitlist",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "flight_id",
+              "value": "={{ 'eq.' + $json.flight_id }}"
+            },
+            {
+              "name": "seat_class",
+              "value": "={{ 'eq.' + $json.seat_class }}"
+            },
+            {
+              "name": "waitlist_status",
+              "value": "eq.waiting"
+            },
+            {
+              "name": "order",
+              "value": "priority_score.desc,joined_at.asc"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            },
+            {
+              "name": "select",
+              "value": "waitlist_id,flight_id,passenger_id,seat_class,fare_type,priority_score,joined_at"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "REPLACE_WITH_YOUR_SUPABASE_SECRET"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer REPLACE_WITH_YOUR_SUPABASE_SECRET"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8d9491f3-d7be-441f-9585-93419677fa0c",
+      "name": "Get Highest Priority Waitlist",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst out = [];\n\nfor (const item of items) {\n  if (Array.isArray(item.json)) {\n    for (const row of item.json) {\n      out.push({ json: row });\n    }\n  } else if (item.json && item.json.waitlist_id) {\n    out.push(item);\n  }\n}\n\nreturn out;"
+      },
+      "id": "6ef3e640-4c05-4f72-bd75-8f8d016ca695",
+      "name": "Keep Matching Waitlist Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/waitlist",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "waitlist_id",
+              "value": "={{ 'eq.' + $json.waitlist_id }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "REPLACE_WITH_YOUR_SUPABASE_SECRET"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer REPLACE_WITH_YOUR_SUPABASE_SECRET"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ waitlist_status: 'offered', offer_expires_at: $now.plus({ minutes: 10 }).toISO() }) }}",
+        "options": {}
+      },
+      "id": "b191d4f8-7070-4b8e-a21f-ced3491a1a1a",
+      "name": "Mark Waitlist Offered",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1152,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 5 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Get Available Inventory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Available Inventory": {
+      "main": [
+        [
+          {
+            "node": "Normalize Inventory Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Inventory Items": {
+      "main": [
+        [
+          {
+            "node": "Get Highest Priority Waitlist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Highest Priority Waitlist": {
+      "main": [
+        [
+          {
+            "node": "Keep Matching Waitlist Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep Matching Waitlist Row": {
+      "main": [
+        [
+          {
+            "node": "Mark Waitlist Offered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8bf9cfc4-b791-4202-81f5-b5e2d4dbcd4d",
+  "meta": {
+    "instanceId": "b30f7931c3f23c168f69d8184362b541d863725a9b7527b32e63d62c0e9fc53b"
+  },
+  "nodeGroups": [],
+  "id": "UTdUtiI03eYAPwvl",
+  "tags": []
+}
