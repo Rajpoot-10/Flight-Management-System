@@ -398,180 +398,24 @@ def create_seat_hold(hold: SeatHoldCreate):
 
 
 # for bookings
-
-
 @app.post("/bookings")
-def create_booking(booking: BookingCreate):
+def create_booking(data: BookingCreate):
+    try:
+        result = supabase.rpc(
+            "confirm_booking",
+            {
+                "p_hold_id": data.hold_id,
+                "p_fare_type": data.fare_type,
+                "p_total_amount": data.total_amount,
+                "p_payment_status": data.payment_status,
+                "p_idempotency_key": data.idempotency_key,
+            },
+        ).execute()
 
-    # 1. Prevent duplicate booking request
-    existing_booking = (
-        supabase
-        .table("bookings")
-        .select("*")
-        .eq("idempotency_key", booking.idempotency_key)
-        .execute()
-    )
+        return result.data
 
-    if existing_booking.data:
-        return {
-            "message": "Booking already exists",
-            "booking": existing_booking.data[0]
-        }
-
-    # 2. Get seat hold
-    hold_response = (
-        supabase
-        .table("seat_holds")
-        .select("*")
-        .eq("hold_id", booking.hold_id)
-        .execute()
-    )
-
-    if not hold_response.data:
-        raise HTTPException(
-            status_code=404,
-            detail="Seat hold not found"
-        )
-
-    hold = hold_response.data[0]
-
-    # 3. Hold must still be active
-    if hold["hold_status"].lower() != "active":
-        raise HTTPException(
-            status_code=409,
-            detail="Seat hold is not active"
-        )
-
-    # 4. Check hold expiry
-    expires_at = datetime.fromisoformat(
-        hold["expires_at"].replace("Z", "+00:00")
-    )
-
-    if datetime.now(timezone.utc) > expires_at:
-        raise HTTPException(
-            status_code=409,
-            detail="Seat hold has expired"
-        )
-
-    # 5. Only confirm if payment is paid
-    if booking.payment_status != "paid":
-        raise HTTPException(
-            status_code=400,
-            detail="Payment must be paid before booking confirmation"
-        )
-
-    # 6. Get seat
-    seat_response = (
-        supabase
-        .table("seats")
-        .select("*")
-        .eq("seat_id", hold["seat_id"])
-        .execute()
-    )
-
-    if not seat_response.data:
-        raise HTTPException(
-            status_code=404,
-            detail="Seat not found"
-        )
-
-    seat = seat_response.data[0]
-
-    if seat["seat_status"].lower() != "held":
-        raise HTTPException(
-            status_code=409,
-            detail="Seat is not currently held"
-        )
-
-    # 7. Get inventory
-    inventory_response = (
-        supabase
-        .table("flight_class_inventory")
-        .select("*")
-        .eq("flight_id", hold["flight_id"])
-        .eq("seat_class", hold["seat_class"])
-        .execute()
-    )
-
-    if not inventory_response.data:
-        raise HTTPException(
-            status_code=404,
-            detail="Flight class inventory not found"
-        )
-
-    inventory = inventory_response.data[0]
-
-    if inventory["available_seats"] <= 0:
-        raise HTTPException(
-            status_code=409,
-            detail="No seats available"
-        )
-
-    # 8. Create booking
-    booking_data = {
-        "flight_id": hold["flight_id"],
-        "passenger_id": hold["passenger_id"],
-        "seat_class": hold["seat_class"],
-        "fare_type": booking.fare_type,
-        "booking_status": "confirmed",
-        "total_amount": booking.total_amount,
-        "payment_status": booking.payment_status,
-        "idempotency_key": booking.idempotency_key
-    }
-
-    booking_response = (
-        supabase
-        .table("bookings")
-        .insert(booking_data)
-        .execute()
-    )
-
-    if not booking_response.data:
-        raise HTTPException(
-            status_code=500,
-            detail="Booking could not be created"
-        )
-
-    created_booking = booking_response.data[0]
-
-    # 9. Link passenger + seat to booking
-    supabase.table("booking_passengers").insert({
-        "booking_id": created_booking["booking_id"],
-        "passenger_id": hold["passenger_id"],
-        "seat_id": hold["seat_id"],
-        "passenger_status": "confirmed",
-        "fare_amount": booking.total_amount
-    }).execute()
-
-    # 10. Mark seat booked
-    supabase.table("seats").update({
-        "seat_status": "booked"
-    }).eq(
-        "seat_id",
-        hold["seat_id"]
-    ).execute()
-
-    # 11. Decrease class inventory
-    supabase.table("flight_class_inventory").update({
-        "available_seats": inventory["available_seats"] - 1
-    }).eq(
-        "inventory_id",
-        inventory["inventory_id"]
-    ).execute()
-
-    # 12. Complete hold
-    supabase.table("seat_holds").update({
-        "hold_status": "completed"
-    }).eq(
-        "hold_id",
-        booking.hold_id
-    ).execute()
-
-    return {
-        "message": "Booking confirmed successfully",
-        "booking": created_booking,
-        "seat_id": hold["seat_id"]
-    }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 # cancellation and return
@@ -579,146 +423,19 @@ def create_booking(booking: BookingCreate):
 
 @app.post("/bookings/{booking_id}/cancel")
 def cancel_booking(booking_id: int):
-
-    # 1. Get booking
-    booking_response = (
-        supabase
-        .table("bookings")
-        .select("*")
-        .eq("booking_id", booking_id)
-        .execute()
-    )
-
-    if not booking_response.data:
-        raise HTTPException(
-            status_code=404,
-            detail="Booking not found"
-        )
-
-    booking = booking_response.data[0]
-
-    # Prevent cancelling twice
-    if booking["booking_status"].lower() == "cancelled":
-        raise HTTPException(
-            status_code=409,
-            detail="Booking is already cancelled"
-        )
-
-    # 2. Get fare rule
-    rule_response = (
-        supabase
-        .table("fare_rules")
-        .select("*")
-        .eq("fare_type", booking["fare_type"])
-        .eq("seat_class", booking["seat_class"])
-        .execute()
-    )
-
-    if not rule_response.data:
-        raise HTTPException(
-            status_code=404,
-            detail="Fare rule not found"
-        )
-
-    rule = rule_response.data[0]
-
-    # 3. Calculate refund
-    refund_amount = 0
-
-    if rule["is_refundable"]:
-        refund_amount = (
-            float(booking["total_amount"])
-            * float(rule["refund_percentage"])
-            / 100
-        )
-
-    # 4. Find booked seat
-    booking_passenger_response = (
-        supabase
-        .table("booking_passengers")
-        .select("*")
-        .eq("booking_id", booking_id)
-        .execute()
-    )
-
-    if not booking_passenger_response.data:
-        raise HTTPException(
-            status_code=404,
-            detail="Booking passenger not found"
-        )
-
-    booking_passenger = booking_passenger_response.data[0]
-    seat_id = booking_passenger["seat_id"]
-
-    # 5. Cancel booking
-    supabase.table("bookings").update({
-        "booking_status": "cancelled"
-    }).eq(
-        "booking_id", booking_id
-    ).execute()
-
-    # 6. Release physical seat
-    supabase.table("seats").update({
-        "seat_status": "available"
-    }).eq(
-        "seat_id", seat_id
-    ).execute()
-
-    # 7. Restore class inventory
-    inventory_response = (
-        supabase
-        .table("flight_class_inventory")
-        .select("*")
-        .eq("flight_id", booking["flight_id"])
-        .eq("seat_class", booking["seat_class"])
-        .execute()
-    )
-
-    if inventory_response.data:
-        inventory = inventory_response.data[0]
-
-        supabase.table("flight_class_inventory").update({
-            "available_seats": inventory["available_seats"] + 1
-        }).eq(
-            "inventory_id",
-            inventory["inventory_id"]
+    try:
+        result = supabase.rpc(
+            "cancel_booking_transaction",
+            {
+                "p_booking_id": booking_id,
+                "p_reason": "Passenger cancellation"
+            }
         ).execute()
 
-    # 8. Update passenger status
-    supabase.table("booking_passengers").update({
-        "passenger_status": "cancelled"
-    }).eq(
-        "booking_id", booking_id
-    ).execute()
+        return result.data
 
-    # 9. Create refund record if refundable
-    refund = None
-
-    if refund_amount > 0:
-        refund_response = (
-            supabase
-            .table("refunds")
-            .insert({
-                "booking_id": booking_id,
-                "passenger_id": booking["passenger_id"],
-                "refund_type": "cancellation",
-                "refund_amount": refund_amount,
-                "refund_status": "pending",
-                "reason": "Passenger cancelled booking"
-            })
-            .execute()
-        )
-
-        refund = refund_response.data[0]
-
-    return {
-        "message": "Booking cancelled successfully",
-        "booking_id": booking_id,
-        "seat_released": seat_id,
-        "refundable": rule["is_refundable"],
-        "refund_amount": refund_amount,
-        "refund": refund
-    }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/waitlist")
@@ -893,117 +610,18 @@ def promote_waitlist(flight_id: int, seat_class: str):
     }
 
 
-## if booking becomes avaible then claim
+# if booking becomes avaible then claim
 @app.post("/waitlist/{waitlist_id}/claim")
 def claim_waitlist_offer(waitlist_id: int):
-
-    # 1. Get waitlist entry
-    waitlist_response = (
-        supabase
-        .table("waitlist")
-        .select("*")
-        .eq("waitlist_id", waitlist_id)
-        .execute()
-    )
-
-    if not waitlist_response.data:
-        raise HTTPException(
-            status_code=404,
-            detail="Waitlist entry not found"
-        )
-
-    entry = waitlist_response.data[0]
-
-    # 2. Must be offered
-    if entry["waitlist_status"].lower() != "offered":
-        raise HTTPException(
-            status_code=409,
-            detail="This waitlist entry is not currently offered"
-        )
-
-    # 3. Check offer expiry
-    offer_expires_at = datetime.fromisoformat(
-        entry["offer_expires_at"].replace("Z", "+00:00")
-    )
-
-    if datetime.now(timezone.utc) > offer_expires_at:
-        supabase.table("waitlist").update({
-            "waitlist_status": "expired"
-        }).eq(
-            "waitlist_id", waitlist_id
+    try:
+        result = supabase.rpc(
+            "claim_waitlist_offer",
+            {
+                "p_waitlist_id": waitlist_id
+            }
         ).execute()
 
-        raise HTTPException(
-            status_code=409,
-            detail="Waitlist offer has expired"
-        )
+        return result.data
 
-    # 4. Find one available physical seat
-    seat_response = (
-        supabase
-        .table("seats")
-        .select("*")
-        .eq("flight_id", entry["flight_id"])
-        .eq("seat_class", entry["seat_class"])
-        .eq("seat_status", "available")
-        .limit(1)
-        .execute()
-    )
-
-    if not seat_response.data:
-        raise HTTPException(
-            status_code=409,
-            detail="No physical seat is currently available"
-        )
-
-    seat = seat_response.data[0]
-
-    # 5. Create a 10-minute seat hold
-    hold_expires_at = (
-        datetime.now(timezone.utc) + timedelta(minutes=10)
-    )
-
-    hold_response = (
-        supabase
-        .table("seat_holds")
-        .insert({
-            "flight_id": entry["flight_id"],
-            "seat_id": seat["seat_id"],
-            "passenger_id": entry["passenger_id"],
-            "seat_class": entry["seat_class"],
-            "hold_status": "active",
-            "expires_at": hold_expires_at.isoformat()
-        })
-        .execute()
-    )
-
-    if not hold_response.data:
-        raise HTTPException(
-            status_code=500,
-            detail="Seat hold could not be created"
-        )
-
-    # 6. Mark seat held
-    supabase.table("seats").update({
-        "seat_status": "held"
-    }).eq(
-        "seat_id", seat["seat_id"]
-    ).execute()
-
-    # 7. Mark waitlist entry claimed
-    waitlist_update = (
-        supabase
-        .table("waitlist")
-        .update({
-            "waitlist_status": "claimed"
-        })
-        .eq("waitlist_id", waitlist_id)
-        .execute()
-    )
-
-    return {
-        "message": "Waitlist offer claimed successfully",
-        "waitlist": waitlist_update.data[0],
-        "hold": hold_response.data[0],
-        "seat": seat
-    }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
