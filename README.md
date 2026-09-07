@@ -37,6 +37,16 @@ A capstone project built using FastAPI, Supabase PostgreSQL, and n8n.
 - Notification logging in Supabase
 - Duplicate reminder prevention / notification de-duplication
 - Shared FastAPI + Supabase + n8n architecture
+- Automated price-drop detection
+- Gmail price-drop alert sending
+- Price-drop notification de-duplication
+- Daily operations reporting automation
+- Weekly operations reporting automation
+- Monthly operations reporting automation
+- Automated flight, booking, refund, and waitlist reporting
+- Revenue and refund aggregation
+- Net revenue calculation
+- Automated operations reports through Gmail
 
 ## n8n Workflows
 
@@ -67,6 +77,32 @@ Runs every 30 minutes and:
 - sends the check-in reminder through Gmail
 - records the notification in Supabase
 - prevents duplicate reminder emails on future workflow runs
+
+
+
+### 4. Price Drop Alert
+Runs every 30 minutes and:
+- retrieves active passenger price alerts
+- checks the current fare for the requested flight and seat class
+- compares the current fare against the passenger's target price
+- detects when the fare reaches or falls below the target
+- retrieves passenger contact information
+- sends price-drop alerts through Gmail
+- stores the last notified fare
+- prevents duplicate alerts for the same price
+
+### 5. Operations Reporting
+Automatically generates:
+- daily operations reports
+- weekly operations reports
+- monthly operations reports
+- flight activity summaries
+- booking and cancellation statistics
+- total revenue
+- total refunds
+- net revenue
+- waitlist activity statistics
+- automated Gmail reports for operational monitoring
 
 ## Run FastAPI
 
@@ -122,6 +158,10 @@ flight_management_system/
     ├── Release Expired Seat Holds.json
     └── Promote Waitlist When Seats Are Available.json
         Flight Check-in Reminder
+        Price Drop Aler
+        Operations Reporting
+        
+        
 
 ```
 
