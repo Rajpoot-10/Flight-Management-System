@@ -46,11 +46,11 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "=sb_secret_c5ft9D8CQwk-7L1FZgAUwA_Ory9cymK"
+              "value": "secretkey here"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer sb_secret_c5ft9D8CQwk-7L1FZgAUwA_Ory9cymK"
+              "value": "=Bearer secretkey here"
             }
           ]
         },
@@ -95,11 +95,11 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "=sb_secret_c5ft9D8CQwk-7L1FZgAUwA_Ory9cymK"
+              "value": "secretkey here"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer sb_secret_c5ft9D8CQwk-7L1FZgAUwA_Ory9cymK"
+              "value": "=Bearer secretkey here"
             }
           ]
         },
@@ -178,11 +178,11 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "=sb_secret_c5ft9D8CQwk-7L1FZgAUwA_Ory9cymK"
+              "value": "secretkey here"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer sb_secret_c5ft9D8CQwk-7L1FZgAUwA_Ory9cymK"
+              "value": "=Bearer secretkey here"
             }
           ]
         },
@@ -297,11 +297,11 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "=sb_secret_c5ft9D8CQwk-7L1FZgAUwA_Ory9cymK"
+              "value": "secretkey here"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer sb_secret_c5ft9D8CQwk-7L1FZgAUwA_Ory9cymK"
+              "value": "=Bearer secretkey here"
             },
             {
               "name": "Content-Type",
