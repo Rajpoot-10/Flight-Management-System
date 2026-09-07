@@ -15,32 +15,58 @@ A capstone project built using FastAPI, Supabase PostgreSQL, and n8n.
 - Passenger creation
 - Physical seat generation
 - Temporary seat holds
-- Booking confirmation
+- Transaction-safe booking confirmation
 - Idempotency handling
 - Seat inventory management
 - Basic and Flexible fare rules
-- Booking cancellation
+- Transaction-safe booking cancellation
 - Refund handling
+- Database constraints and validation
 - Waitlist joining
-- Waitlist promotion
-- Waitlist claim flow
+- Priority-based waitlist promotion
+- Row-locking with FOR UPDATE SKIP LOCKED
+- Waitlist offer claim flow
+- Transaction-safe waitlist claiming
+- 10-minute waitlist offer window
 - Expired seat-hold cleanup automation
-- Automated waitlist promotion
+- Automatic seat release
+- Automated promotion of the next waitlisted passenger
+- Scheduled check-in reminder automation
+- Cancelled-flight reminder suppression
+- Gmail check-in reminder sending
+- Notification logging in Supabase
+- Duplicate reminder prevention / notification de-duplication
+- Shared FastAPI + Supabase + n8n architecture
 
 ## n8n Workflows
 
 ### 1. Release Expired Seat Holds
 Runs every 5 minutes and:
-- detects expired active holds
-- marks holds as expired
-- releases held seats
+- detects expired active seat holds
+- marks expired holds as expired
+- releases the associated physical seats
+- triggers promotion of the next eligible waitlisted passenger when a seat becomes available
 
 ### 2. Waitlist Promotion
 Runs every 5 minutes and:
-- detects available seats
-- finds the highest-priority waiting passenger
-- marks the passenger as offered
+- detects available seat inventory
+- calls the PostgreSQL waitlist promotion RPC
+- selects the highest-priority waiting passenger
+- uses row locking to prevent duplicate promotions
+- marks the selected passenger as offered
 - creates a 10-minute claim window
+
+### 3. Flight Check-in Reminder
+Runs every 30 minutes and:
+- detects confirmed and paid bookings
+- retrieves scheduled flight details
+- identifies flights departing within the next 24 hours
+- suppresses reminders for cancelled/non-scheduled flights
+- retrieves the passenger's email
+- checks whether a reminder has already been sent
+- sends the check-in reminder through Gmail
+- records the notification in Supabase
+- prevents duplicate reminder emails on future workflow runs
 
 ## Run FastAPI
 
