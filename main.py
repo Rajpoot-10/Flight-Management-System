@@ -11,7 +11,8 @@ from schemas import (
     SeatHoldCreate,
     PassengerCreate,
     BookingCreate,
-    WaitlistCreate
+    WaitlistCreate,
+    PriceAlertCreate
 )
 
 app = FastAPI()
@@ -623,5 +624,77 @@ def claim_waitlist_offer(waitlist_id: int):
 
         return result.data
 
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # price alert endpoint
+
+
+@app.post("/price-alerts")
+def create_price_alert(data: PriceAlertCreate):
+    try:
+        # Validate passenger
+        passenger = (
+            supabase.table("passenger")
+            .select("passenger_id")
+            .eq("passenger_id", data.passenger_id)
+            .execute()
+        )
+
+        if not passenger.data:
+            raise HTTPException(status_code=404, detail="Passenger not found")
+
+        # Validate flight
+        flight = (
+            supabase.table("flights")
+            .select("flight_id,flight_status")
+            .eq("flight_id", data.flight_id)
+            .execute()
+        )
+
+        if not flight.data:
+            raise HTTPException(status_code=404, detail="Flight not found")
+
+        if flight.data[0]["flight_status"] != "scheduled":
+            raise HTTPException(
+                status_code=400,
+                detail="Price alerts can only be created for scheduled flights"
+            )
+
+        # Validate requested class exists
+        inventory = (
+            supabase.table("flight_class_inventory")
+            .select("inventory_id,base_fare")
+            .eq("flight_id", data.flight_id)
+            .eq("seat_class", data.seat_class)
+            .execute()
+        )
+
+        if not inventory.data:
+            raise HTTPException(
+                status_code=404,
+                detail="Seat class not available for this flight"
+            )
+
+        # Create alert
+        result = (
+            supabase.table("price_alerts")
+            .insert({
+                "passenger_id": data.passenger_id,
+                "flight_id": data.flight_id,
+                "seat_class": data.seat_class,
+                "target_price": data.target_price,
+                "alert_status": "active"
+            })
+            .execute()
+        )
+
+        return {
+            "status": "created",
+            "price_alert": result.data[0]
+        }
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
