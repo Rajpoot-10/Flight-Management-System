@@ -121,6 +121,8 @@ flight_management_system/
 └── n8n_workflows/
     ├── Release Expired Seat Holds.json
     └── Promote Waitlist When Seats Are Available.json
+        Flight Check-in Reminder
+
 ```
 
 ## Technology Stack
