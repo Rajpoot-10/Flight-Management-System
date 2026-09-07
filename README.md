@@ -139,7 +139,7 @@ flight_management_system/
 
 The current implementation focuses on the core flight booking lifecycle and scheduled database automation.
 
-Advanced capstone components such as Pinecone/RAG policy retrieval, Gmail notifications, fraud detection, operational reporting, and some production-level concurrency controls are not fully implemented.
+Advanced capstone components such as Pinecone/RAG policy retrieval, fraud detection, operational reporting, and some production-level concurrency controls are not fully implemented.
 
 ## Security
 
