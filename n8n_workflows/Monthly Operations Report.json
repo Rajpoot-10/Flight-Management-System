@@ -1,0 +1,319 @@
+{
+  "name": "Monthly Operations Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtHour": 20
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "bac6ba8b-382d-4df9-b11b-d25b423f1122",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const flights = $('Get Monthly Flights').all();\nconst bookings = $('Get Monthly Bookings').all();\nconst refunds = $('Get Monthly Refunds.').all();\nconst waitlist = $('Get Monthly Waitlist Activity.').all();\n\nconst validFlights = flights.filter(i => i.json.flight_id);\nconst validBookings = bookings.filter(i => i.json.booking_id);\nconst validRefunds = refunds.filter(i => i.json.refund_id);\nconst validWaitlist = waitlist.filter(i => i.json.waitlist_id);\n\nconst totalRevenue = validBookings\n  .filter(i => i.json.payment_status === 'paid')\n  .reduce((sum, i) => sum + Number(i.json.total_amount || 0), 0);\n\nconst totalRefunds = validRefunds\n  .reduce((sum, i) => sum + Number(i.json.refund_amount || 0), 0);\n\nconst confirmedBookings = validBookings\n  .filter(i => i.json.booking_status === 'confirmed').length;\n\nconst cancelledBookings = validBookings\n  .filter(i => i.json.booking_status === 'cancelled').length;\n\nconst waitingPassengers = validWaitlist\n  .filter(i => i.json.waitlist_status === 'waiting').length;\n\nconst offeredPassengers = validWaitlist\n  .filter(i => i.json.waitlist_status === 'offered').length;\n\nreturn [\n  {\n    json: {\n      report_period: new Date(\n  new Date().getFullYear(),\n  new Date().getMonth() - 1,\n  1\n).toLocaleString('en-US', { month: 'long', year: 'numeric' }),\n      total_flights: validFlights.length,\n      total_bookings: validBookings.length,\n      confirmed_bookings: confirmedBookings,\n      cancelled_bookings: cancelledBookings,\n      total_revenue: totalRevenue,\n      total_refunds: totalRefunds,\n      net_revenue: totalRevenue - totalRefunds,\n      waitlist_entries: validWaitlist.length,\n      waiting_passengers: waitingPassengers,\n      offered_passengers: offeredPassengers\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        0
+      ],
+      "id": "e4593212-11bb-4eb0-bfb1-d3a410f8b075",
+      "name": "Build Operations Summary"
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/flights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "departure_time",
+              "value": "=gte.{{ new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString() }}"
+            },
+            {
+              "name": "departure_time",
+              "value": "=lt.{{ new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString() }}"
+            },
+            {
+              "name": "select",
+              "value": "flight_id,flight_number,origin,destination,departure_time,flight_status,total_capacity"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "fb38a1c8-d76a-4678-a4b6-f8a1a30d5451",
+      "name": "Get Monthly Flights",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "created_at",
+              "value": "=gte.{{ new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString() }}"
+            },
+            {
+              "name": "select",
+              "value": "booking_id,flight_id,passenger_id,seat_class,fare_type,booking_status,total_amount,payment_status,created_at"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        432,
+        0
+      ],
+      "id": "113c5ae0-565d-4f97-8ce6-e1e5c362a902",
+      "name": "Get Monthly Bookings",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/refunds",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "requested_at",
+              "value": "=gte.{{ new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString() }}"
+            },
+            {
+              "name": "requested_at",
+              "value": "=lt.{{ new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString() }}"
+            },
+            {
+              "name": "select",
+              "value": "refund_id,booking_id,passenger_id,refund_type,refund_amount,refund_status,reason,requested_at"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        656,
+        0
+      ],
+      "id": "6a69aa63-625e-436f-9d3a-d6b5fe3cd112",
+      "name": "Get Monthly Refunds.",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/waitlist",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "joined_at",
+              "value": "=gte.{{ new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString() }}"
+            },
+            {
+              "name": "joined_at",
+              "value": "=lt.{{ new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString() }}"
+            },
+            {
+              "name": "select",
+              "value": "waitlist_id,flight_id,passenger_id,seat_class,fare_type,priority_score,waitlist_status,joined_at,offer_expires_at"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        880,
+        0
+      ],
+      "id": "577844b4-caf8-4f91-af87-243e0d414302",
+      "name": "Get Monthly Waitlist Activity.",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "sendTo": "hassamali3255397@gmail.com",
+        "subject": "Monthly Flight Operations Report",
+        "message": "=Monthly Flight Operations Report  Date: {{ $json.report_period }}  Total Flights: {{ $json.total_flights }} Total Bookings: {{ $json.total_bookings }} Confirmed Bookings: {{ $json.confirmed_bookings }} Cancelled Bookings: {{ $json.cancelled_bookings }}  Total Revenue: PKR {{ $json.total_revenue }} Total Refunds: PKR {{ $json.total_refunds }} Net Revenue: PKR {{ $json.net_revenue }}  Waitlist Entries: {{ $json.waitlist_entries }} Waiting Passengers: {{ $json.waiting_passengers }} Offered Passengers: {{ $json.offered_passengers }}  Generated automatically by the Flight Management System.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1328,
+        0
+      ],
+      "id": "287398ea-43fd-4edc-8421-c91253aef618",
+      "name": "Monthly Operations Report",
+      "webhookId": "e061f088-d214-4143-bb1f-5733756a9cd3",
+      "alwaysOutputData": false,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mUo1iQT8HszcVinP",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Monthly Flights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Operations Summary": {
+      "main": [
+        [
+          {
+            "node": "Monthly Operations Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Monthly Flights": {
+      "main": [
+        [
+          {
+            "node": "Get Monthly Bookings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Monthly Bookings": {
+      "main": [
+        [
+          {
+            "node": "Get Monthly Refunds.",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Monthly Refunds.": {
+      "main": [
+        [
+          {
+            "node": "Get Monthly Waitlist Activity.",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Monthly Waitlist Activity.": {
+      "main": [
+        [
+          {
+            "node": "Build Operations Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b77ec3c7-eaf6-48ce-8539-a3850164367c",
+  "meta": {
+    "instanceId": "b30f7931c3f23c168f69d8184362b541d863725a9b7527b32e63d62c0e9fc53b"
+  },
+  "nodeGroups": [],
+  "id": "CKkuVvhdrM7NdlIn",
+  "tags": []
+}
