@@ -72,3 +72,10 @@ class WaitlistCreate(BaseModel):
     seat_class: Literal["first", "business", "economy"]
     fare_type: Literal["basic", "flexible"]
     priority_score: int = 0
+
+
+class PriceAlertCreate(BaseModel):
+    flight_id: int
+    passenger_id: int
+    seat_class: Literal["first", "business", "economy"]
+    target_price: float = Field(gt=0)
