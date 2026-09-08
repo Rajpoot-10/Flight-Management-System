@@ -1,0 +1,364 @@
+{
+  "name": "Passenger Policy RAG Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "includeSpamTrash": false,
+          "readStatus": "unread",
+          "sender": "descentboy9595@gmail.com"
+        },
+        "options": {}
+      },
+      "id": "fd72faef-1aee-401b-8519-8bc4fea541be",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -336,
+        416
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mUo1iQT8HszcVinP",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = $json;\n\nfunction extractEmail(value) {\n  if (!value) return '';\n\n  if (typeof value === 'string') {\n    const match = value.match(/<([^>]+)>/);\n    return match ? match[1].trim() : value.trim();\n  }\n\n  if (Array.isArray(value)) {\n    for (const item of value) {\n      const found = extractEmail(item);\n      if (found) return found;\n    }\n    return '';\n  }\n\n  if (typeof value === 'object') {\n    if (typeof value.address === 'string') return value.address;\n    if (typeof value.email === 'string') return value.email;\n\n    if (value.value) {\n      const found = extractEmail(value.value);\n      if (found) return found;\n    }\n\n    if (typeof value.text === 'string') {\n      const found = extractEmail(value.text);\n      if (found) return found;\n    }\n\n    for (const v of Object.values(value)) {\n      const found = extractEmail(v);\n      if (found && found.includes('@')) return found;\n    }\n  }\n\n  return '';\n}\n\nconst fromRaw = j.From ?? j.from ?? j.sender ?? '';\n\nreturn [{\n  json: {\n    gmail_message_id: j.id || j.messageId || '',\n    gmail_thread_id: j.threadId || '',\n    sender_email: extractEmail(fromRaw),\n    subject: j.Subject || j.subject || '',\n    question:\n      j.textPlain ||\n      j.text ||\n      j.snippet ||\n      j.body ||\n      ''\n  }\n}];"
+      },
+      "id": "00dca08f-f93b-4636-ba7f-3eb61d10a0d9",
+      "name": "Extract Passenger Question",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -96,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Passenger Question:\n{{ $('Extract Passenger Question').item.json.question }}\n\nRetrieved Policy Context:\n{{ JSON.stringify($('Pinecone Policy Knowledge Base').all().map(i => i.json)) }}",
+        "options": {
+          "systemMessage": "You are the policy support assistant for the Flight Management System capstone.\n\nYou MUST use the airline_policy_knowledge_base tool before answering any passenger policy question.\n\nRules:\n1. Ground the answer only in retrieved airline policy text.\n2. Do not invent baggage limits, fees, refund rules, change rules, or airline policy.\n3. Clearly distinguish Basic Fare from Flexible Fare.\n4. If retrieved policy is insufficient, say the policy knowledge base does not contain enough information and recommend human review.\n5. Keep the answer concise, professional, and suitable for email.\n6. Do not claim this is a real airline's official policy.\n7. Return only the proposed passenger-facing answer. Do not include internal reasoning."
+        }
+      },
+      "id": "648c8e5e-3efd-4da1-a8ef-c0db40b1cde2",
+      "name": "RAG Policy Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        496,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "7c5bf96e-49b8-460a-a742-c0617cd06652",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        544,
+        672
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "load",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "airline-policies",
+          "mode": "list",
+          "cachedResultName": "airline-policies"
+        },
+        "prompt": "={{ $('Extract Passenger Question').item.json.question }}",
+        "topK": 6,
+        "options": {}
+      },
+      "id": "e68b7332-c425-46b1-8dda-f7ab863f434d",
+      "name": "Pinecone Policy Knowledge Base",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        160,
+        416
+      ],
+      "credentials": {
+        "pineconeApi": {
+          "id": "jA3RCQW8lIuMar27",
+          "name": "Pinecone account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "hassamali3255397@gmail.com",
+        "subject": "=Approval Required: Policy Reply - {{ $('Extract Passenger Question').item.json.subject }}",
+        "message": "=Passenger: {{ $('Extract Passenger Question').item.json.sender_email }}\n\nOriginal question:\n{{ $('Extract Passenger Question').item.json.question }}\n\nProposed AI response:\n{{ $('RAG Policy Agent').item.json.output }}\n\nApprove this response to send it to the passenger.",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double",
+            "disapproveLabel": "Reject"
+          }
+        },
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "c4a4685f-ccec-4f53-8016-df5caf1587e8",
+      "name": "Human Approval via Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        864,
+        416
+      ],
+      "webhookId": "c2a2ea00-a69f-46ff-ac31-8fa97f451ea3",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mUo1iQT8HszcVinP",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "48747f50-d736-4cd0-811f-b4bb15a4b910",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9aca111c-574f-4bdc-bd61-21fc5c9d50bc",
+      "name": "Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1104,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Extract Passenger Question').item.json.sender_email }}",
+        "subject": "=Re: {{ $('Extract Passenger Question').item.json.subject }}",
+        "message": "={{ $('RAG Policy Agent').item.json.output }}",
+        "options": {
+          "appendAttribution": false,
+          "replyToSenderOnly": true
+        }
+      },
+      "id": "09e5e5d5-5856-4eef-aaa1-8c4fbf3e118a",
+      "name": "Reply to Passenger",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1392,
+        288
+      ],
+      "webhookId": "5f27fc45-a73c-4ae0-9523-f010d7740527",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mUo1iQT8HszcVinP",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "hassamali3255397@gmail.com",
+        "subject": "=Rejected Policy Reply - {{ $('Extract Passenger Question').item.json.subject }}",
+        "message": "=The AI-generated response was rejected and was NOT sent to the passenger.\n\nPassenger: {{ $('Extract Passenger Question').item.json.sender_email }}\n\nQuestion:\n{{ $('Extract Passenger Question').item.json.question }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "32ea2add-c329-41a6-9840-e21400f8145b",
+      "name": "Log Rejection by Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1408,
+        528
+      ],
+      "webhookId": "f9379ff2-285c-43fd-8690-cc2a75d94fb6",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mUo1iQT8HszcVinP",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        160,
+        608
+      ],
+      "id": "2666a7e6-7b29-4214-8b3f-b60334072ecf",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "iOcwmcwx9TXfoHw3",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Passenger Question",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Passenger Question": {
+      "main": [
+        [
+          {
+            "node": "Pinecone Policy Knowledge Base",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "RAG Policy Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Policy Knowledge Base": {
+      "ai_tool": [
+        []
+      ],
+      "main": [
+        [
+          {
+            "node": "RAG Policy Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG Policy Agent": {
+      "main": [
+        [
+          {
+            "node": "Human Approval via Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human Approval via Gmail": {
+      "main": [
+        [
+          {
+            "node": "Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved?": {
+      "main": [
+        [
+          {
+            "node": "Reply to Passenger",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Rejection by Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Policy Knowledge Base",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b66bd82f-6011-4672-8964-1269ce45becc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b30f7931c3f23c168f69d8184362b541d863725a9b7527b32e63d62c0e9fc53b"
+  },
+  "nodeGroups": [],
+  "id": "0xeztPP1pXG8ReFP",
+  "tags": []
+}
