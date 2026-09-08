@@ -47,6 +47,14 @@ A capstone project built using FastAPI, Supabase PostgreSQL, and n8n.
 - Revenue and refund aggregation
 - Net revenue calculation
 - Automated operations reports through Gmail
+-  Airline policy RAG knowledge base
+- Google Gemini policy embeddings
+- Pinecone vector search and semantic policy retrieval
+- Grounded AI passenger-policy responses
+- Gmail-based passenger support automation
+- Human-in-the-loop approval for AI-generated responses
+- Approved responses sent to the original passenger
+- Rejected AI responses suppressed
 
 ## n8n Workflows
 
@@ -104,6 +112,30 @@ Automatically generates:
 - waitlist activity statistics
 - automated Gmail reports for operational monitoring
 
+### 6. Airline Policy Ingestion to Pinecone
+Runs when airline policy knowledge needs to be created or updated and:
+- loads the airline policy document
+- splits policy content into semantic chunks
+- processes chunks through the n8n data loader
+- generates vector embeddings using Google Gemini Embeddings
+- stores policy vectors in the Pinecone `airline-policies` index
+- preserves policy content for semantic retrieval
+- provides the knowledge base used by the passenger RAG assistant
+
+### 7. Passenger Policy RAG Assistant
+Processes passenger policy questions through Gmail and:
+- detects new passenger emails using Gmail Trigger
+- extracts the passenger email, subject, and question
+- generates a query embedding using Google Gemini Embeddings
+- retrieves the most relevant airline policy documents from Pinecone
+- provides retrieved policy context to the Gemini-powered RAG assistant
+- generates an answer grounded in the retrieved airline policies
+- avoids inventing unsupported airline rules
+- sends the proposed AI response for human approval
+- waits for an explicit approve or reject decision
+- sends approved responses to the original passenger through Gmail
+- prevents rejected AI responses from being sent
+
 ## Run FastAPI
 
 ```bash
@@ -160,6 +192,8 @@ flight_management_system/
         Flight Check-in Reminder
         Price Drop Aler
         Operations Reporting
+        Airline Policy Ingestion to Pinecone
+         Passenger Policy RAG Assistant
         
         
 
@@ -174,12 +208,6 @@ flight_management_system/
 - n8n
 - Pydantic
 - REST API
-
-## Current Scope
-
-The current implementation focuses on the core flight booking lifecycle and scheduled database automation.
-
-Advanced capstone components such as Pinecone/RAG policy retrieval, fraud detection, operational reporting, and some production-level concurrency controls are not fully implemented.
 
 ## Security
 
