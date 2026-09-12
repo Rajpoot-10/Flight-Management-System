@@ -1,3 +1,10 @@
+from fastapi import HTTPException
+from datetime import date, datetime, time, timedelta, timezone
+from schemas import ClassCapacityUpdate
+from fastapi.middleware.cors import CORSMiddleware
+from schemas import PartialPassengerCancelRequest
+from schemas import FlightCancelRequest
+from schemas import FlightScheduleUpdate
 from fastapi import FastAPI, HTTPException
 from database import supabase
 from schemas import FlightCreate
@@ -16,6 +23,20 @@ from schemas import (
 )
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:5175",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/")
@@ -27,6 +48,36 @@ def home():
 def get_flights():
     response = supabase.table("flights").select("*").execute()
     return response.data
+
+
+@app.get("/passenger/routes")
+def get_passenger_routes(origin: str | None = None):
+    try:
+        now = datetime.now(timezone.utc)
+        query = (
+            supabase
+            .table("flights")
+            .select("origin,destination")
+            .eq("flight_status", "scheduled")
+            .gt("departure_time", now.isoformat())
+        )
+
+        if origin:
+            query = query.eq("origin", origin)
+
+        response = query.execute()
+        routes = []
+        seen = set()
+
+        for flight in response.data or []:
+            route = (flight.get("origin"), flight.get("destination"))
+            if route[0] and route[1] and route not in seen:
+                seen.add(route)
+                routes.append({"origin": route[0], "destination": route[1]})
+
+        return {"routes": routes}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/flights")
@@ -64,19 +115,22 @@ def create_flight(flight: FlightCreate):
             "flight_id": flight_id,
             "seat_class": "first",
             "total_seats": flight.first_seats,
-            "available_seats": flight.first_seats
+            "available_seats": flight.first_seats,
+            "base_fare": flight.first_fare
         },
         {
             "flight_id": flight_id,
             "seat_class": "business",
             "total_seats": flight.business_seats,
-            "available_seats": flight.business_seats
+            "available_seats": flight.business_seats,
+            "base_fare": flight.business_fare
         },
         {
             "flight_id": flight_id,
             "seat_class": "economy",
             "total_seats": flight.economy_seats,
-            "available_seats": flight.economy_seats
+            "available_seats": flight.economy_seats,
+            "base_fare": flight.economy_fare
         }
     ]
 
@@ -98,49 +152,60 @@ def create_flight(flight: FlightCreate):
 def search_flights(
     origin: str,
     destination: str,
-    travel_date: date
+    travel_date: date,
+    seat_class: str
 ):
-    flights_response = (
-        supabase
-        .table("flights")
-        .select("*")
-        .eq("origin", origin)
-        .eq("destination", destination)
-        .eq("flight_status", "Scheduled")
-        .execute()
-    )
+    try:
+        now = datetime.now(timezone.utc)
+        start_of_day = datetime.combine(
+            travel_date,
+            time.min,
+            tzinfo=timezone.utc
+        )
 
-    matching_flights = []
+        end_of_day = start_of_day + timedelta(days=1)
+        search_start = max(start_of_day, now)
 
-    for flight in flights_response.data:
-
-        departure_date = flight["departure_time"][:10]
-
-        if departure_date != str(travel_date):
-            continue
-
-        inventory_response = (
+        flights_response = (
             supabase
-            .table("flight_class_inventory")
+            .table("flights")
             .select("*")
-            .eq("flight_id", flight["flight_id"])
+            .eq("origin", origin)
+            .eq("destination", destination)
+            .gte("departure_time", search_start.isoformat())
+            .lt("departure_time", end_of_day.isoformat())
+            .eq("flight_status", "scheduled")
             .execute()
         )
 
-        matching_flights.append({
-            "flight_id": flight["flight_id"],
-            "flight_number": flight["flight_number"],
-            "origin": flight["origin"],
-            "destination": flight["destination"],
-            "departure_time": flight["departure_time"],
-            "arrival_time": flight["arrival_time"],
-            "available_classes": inventory_response.data
-        })
+        flights = flights_response.data or []
 
-    return {
-        "count": len(matching_flights),
-        "flights": matching_flights
-    }
+        available_flights = []
+
+        for flight in flights:
+            inventory_response = (
+                supabase
+                .table("flight_class_inventory")
+                .select("*")
+                .eq("flight_id", flight["flight_id"])
+                .eq("seat_class", seat_class)
+                .gt("available_seats", 0)
+                .execute()
+            )
+
+            inventory = inventory_response.data or []
+
+            if inventory:
+                flight["inventory"] = inventory[0]
+                available_flights.append(flight)
+
+        return available_flights
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 
 @app.post("/passenger")
@@ -439,6 +504,57 @@ def cancel_booking(booking_id: int):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.get("/bookings/{booking_id}")
+def get_booking(booking_id: int):
+    booking_response = (
+        supabase.table("bookings").select(
+            "*").eq("booking_id", booking_id).execute()
+    )
+    if not booking_response.data:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    booking = booking_response.data[0]
+    flight_response = (
+        supabase.table("flights").select(
+            "*").eq("flight_id", booking["flight_id"]).execute()
+    )
+    passenger_id = booking.get("passenger_id")
+    passenger_response = (
+        supabase.table("passenger").select(
+            "*").eq("passenger_id", passenger_id).execute()
+        if passenger_id else None
+    )
+    links_response = (
+        supabase.table("booking_passengers").select(
+            "*").eq("booking_id", booking_id).execute()
+    )
+    seat_rows = []
+    for link in links_response.data or []:
+        linked_passenger_id = link.get("passenger_id") or passenger_id
+        seats_response = (
+            supabase.table("seats").select(
+                "*").eq("seat_id", link["seat_id"]).execute()
+            if link.get("seat_id") else None
+        )
+        seat_rows.append({
+            "passenger_id": linked_passenger_id,
+            "seat": (seats_response.data or [None])[0] if seats_response else None,
+        })
+
+    refunds_response = (
+        supabase.table("refunds").select(
+            "*").eq("booking_id", booking_id).execute()
+    )
+    return {
+        "booking": booking,
+        "flight": (flight_response.data or [None])[0],
+        "passenger": (passenger_response.data or [None])[0] if passenger_response else None,
+        "passengers": links_response.data or [],
+        "seats": seat_rows,
+        "refunds": refunds_response.data or [],
+    }
+
+
 @app.post("/waitlist")
 def join_waitlist(waitlist: WaitlistCreate):
 
@@ -455,6 +571,19 @@ def join_waitlist(waitlist: WaitlistCreate):
         raise HTTPException(
             status_code=404,
             detail="Flight not found"
+        )
+
+    flight = flight_response.data[0]
+    departure_time = datetime.fromisoformat(
+        flight["departure_time"].replace("Z", "+00:00")
+    )
+    if (
+        flight.get("flight_status") != "scheduled"
+        or departure_time <= datetime.now(timezone.utc)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Waitlists are only available for future scheduled flights"
         )
 
     # 2. Check passenger exists
@@ -534,7 +663,36 @@ def join_waitlist(waitlist: WaitlistCreate):
 
     return {
         "message": "Passenger added to waitlist successfully",
-        "waitlist": response.data[0]
+        "waitlist": response.data[0],
+        "flight": flight
+    }
+
+
+@app.get("/waitlist/{waitlist_id}")
+def get_waitlist_status(waitlist_id: int):
+    response = (
+        supabase
+        .table("waitlist")
+        .select("*")
+        .eq("waitlist_id", waitlist_id)
+        .execute()
+    )
+
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Waitlist entry not found")
+
+    entry = response.data[0]
+    flight_response = (
+        supabase
+        .table("flights")
+        .select("flight_id,flight_number,origin,destination,departure_time,flight_status")
+        .eq("flight_id", entry["flight_id"])
+        .execute()
+    )
+
+    return {
+        "waitlist": entry,
+        "flight": (flight_response.data or [None])[0]
     }
 
 
@@ -647,7 +805,7 @@ def create_price_alert(data: PriceAlertCreate):
         # Validate flight
         flight = (
             supabase.table("flights")
-            .select("flight_id,flight_status")
+            .select("flight_id,flight_status,departure_time")
             .eq("flight_id", data.flight_id)
             .execute()
         )
@@ -655,10 +813,16 @@ def create_price_alert(data: PriceAlertCreate):
         if not flight.data:
             raise HTTPException(status_code=404, detail="Flight not found")
 
-        if flight.data[0]["flight_status"] != "scheduled":
+        departure_time = datetime.fromisoformat(
+            flight.data[0]["departure_time"].replace("Z", "+00:00")
+        )
+        if (
+            flight.data[0]["flight_status"] != "scheduled"
+            or departure_time <= datetime.now(timezone.utc)
+        ):
             raise HTTPException(
                 status_code=400,
-                detail="Price alerts can only be created for scheduled flights"
+                detail="Price alerts can only be created for future scheduled flights"
             )
 
         # Validate requested class exists
@@ -698,3 +862,185 @@ def create_price_alert(data: PriceAlertCreate):
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# for flight rescheduling
+
+
+@app.put("/flights/{flight_id}/schedule")
+def update_flight_schedule(
+    flight_id: int,
+    schedule: FlightScheduleUpdate
+):
+    flight_res = (
+        supabase.table("flights")
+        .select("*")
+        .eq("flight_id", flight_id)
+        .single()
+        .execute()
+    )
+
+    if not flight_res.data:
+        raise HTTPException(status_code=404, detail="Flight not found")
+
+    flight = flight_res.data
+
+    if flight["flight_status"] == "cancelled":
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot reschedule a cancelled flight"
+        )
+
+    old_departure = flight["departure_time"]
+    old_arrival = flight["arrival_time"]
+
+    update_res = (
+        supabase.table("flights")
+        .update({
+            "departure_time": schedule.departure_time.isoformat(),
+            "arrival_time": schedule.arrival_time.isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        })
+        .eq("flight_id", flight_id)
+        .execute()
+    )
+
+    affected_bookings = (
+        supabase.table("bookings")
+        .select("booking_id, passenger_id")
+        .eq("flight_id", flight_id)
+        .eq("booking_status", "confirmed")
+        .execute()
+    )
+
+    supabase.table("audit_logs").insert({
+        "actor_type": "admin",
+        "actor_id": "fastapi",
+        "action": "flight_schedule_updated",
+        "entity_type": "flight",
+        "entity_id": flight_id,
+        "old_data": {
+            "departure_time": old_departure,
+            "arrival_time": old_arrival
+        },
+        "new_data": {
+            "departure_time": schedule.departure_time.isoformat(),
+            "arrival_time": schedule.arrival_time.isoformat()
+        }
+    }).execute()
+
+    return {
+        "status": "updated",
+        "flight_id": flight_id,
+        "old_departure_time": old_departure,
+        "new_departure_time": schedule.departure_time,
+        "old_arrival_time": old_arrival,
+        "new_arrival_time": schedule.arrival_time,
+        "affected_bookings": affected_bookings.data
+    }
+
+
+@app.post("/flights/{flight_id}/cancel")
+def cancel_flight(
+    flight_id: int,
+    request: FlightCancelRequest
+):
+    try:
+        result = supabase.rpc(
+            "cancel_entire_flight",
+            {
+                "p_flight_id": flight_id,
+                "p_reason": request.reason
+            }
+        ).execute()
+
+        return result.data
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+
+# for passenger cancellation
+
+
+@app.post("/bookings/{booking_id}/passengers/cancel")
+def cancel_passenger_from_booking(
+    booking_id: int,
+    request: PartialPassengerCancelRequest
+):
+    try:
+        result = supabase.rpc(
+            "cancel_booking_passenger",
+            {
+                "p_booking_id": booking_id,
+                "p_passenger_id": request.passenger_id,
+                "p_reason": request.reason
+            }
+        ).execute()
+
+        return result.data
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+
+# for updating class capacity
+
+
+@app.put("/flights/{flight_id}/class-capacity")
+def update_flight_class_capacity(
+    flight_id: int,
+    request: ClassCapacityUpdate
+):
+    try:
+        result = supabase.rpc(
+            "update_class_capacity",
+            {
+                "p_flight_id": flight_id,
+                "p_seat_class": request.seat_class,
+                "p_new_total": request.new_total
+            }
+        ).execute()
+
+        return result.data
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+
+# Seat Management
+
+
+@app.get("/flights/{flight_id}/seats")
+def get_available_seats(
+    flight_id: int,
+    seat_class: str
+):
+    try:
+        response = (
+            supabase
+            .table("seats")
+            .select("*")
+            .eq("flight_id", flight_id)
+            .eq("seat_class", seat_class)
+            .eq("seat_status", "available")
+            .order("seat_number")
+            .execute()
+        )
+
+        return response.data or []
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )

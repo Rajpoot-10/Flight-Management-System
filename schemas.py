@@ -1,3 +1,4 @@
+from pydantic import BaseModel, model_validator
 from pydantic import BaseModel
 from pydantic import BaseModel, Field, model_validator
 from datetime import datetime
@@ -17,6 +18,9 @@ class FlightCreate(BaseModel):
     first_seats: int = Field(gt=0)
     business_seats: int = Field(gt=0)
     economy_seats: int = Field(gt=0)
+    first_fare: float = Field(default=0, ge=0)
+    business_fare: float = Field(default=0, ge=0)
+    economy_fare: float = Field(default=0, ge=0)
 
     @model_validator(mode="after")
     def validate_flight(self):
@@ -66,6 +70,7 @@ class BookingCreate(BaseModel):
     payment_status: Literal["paid", "pending"]
     idempotency_key: str
 
+
 class WaitlistCreate(BaseModel):
     flight_id: int
     passenger_id: int
@@ -79,3 +84,35 @@ class PriceAlertCreate(BaseModel):
     passenger_id: int
     seat_class: Literal["first", "business", "economy"]
     target_price: float = Field(gt=0)
+
+
+class FlightScheduleUpdate(BaseModel):
+    departure_time: datetime
+    arrival_time: datetime
+
+    @model_validator(mode="after")
+    def validate_schedule(self):
+        if self.arrival_time <= self.departure_time:
+            raise ValueError("arrival_time must be after departure_time")
+        return self
+
+
+class FlightCancelRequest(BaseModel):
+    reason: str = "Flight cancelled by airline"
+
+
+
+
+class PartialPassengerCancelRequest(BaseModel):
+    passenger_id: int
+    reason: str = "Passenger cancellation"
+
+
+
+
+from pydantic import BaseModel, Field
+from typing import Literal
+
+class ClassCapacityUpdate(BaseModel):
+    seat_class: Literal["first", "business", "economy"]
+    new_total: int = Field(ge=0)

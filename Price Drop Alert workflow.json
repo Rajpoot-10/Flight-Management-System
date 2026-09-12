@@ -1,0 +1,375 @@
+{
+  "name": "Price Drop Alert workflow.",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "name": "Every 30 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -240,
+        -16
+      ],
+      "id": "397eccd7-fcfc-4a4e-8bac-a54a9a0257b5"
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/price_alerts",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "alert_status",
+              "value": "eq.active"
+            },
+            {
+              "name": "select",
+              "value": " price_alert_id,passenger_id,flight_id,seat_class,target_price,last_notified_price"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type ",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -16,
+        -208
+      ],
+      "id": "d012379d-09ee-488f-9246-d932f37c1504",
+      "name": "Get Active Price Alerts"
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/flight_class_inventory",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "flight_id",
+              "value": "={{ 'eq.' + $json.flight_id }}"
+            },
+            {
+              "name": "seat_class",
+              "value": "={{ 'eq.' + $json.seat_class }}"
+            },
+            {
+              "name": "select",
+              "value": "inventory_id,flight_id,seat_class,base_fare"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        192,
+        -208
+      ],
+      "id": "b2630a2c-568a-4d07-9a3b-5b018fe5c545",
+      "name": "Get Current Fare."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fc1fee76-0dda-4dc8-8567-756216da40c9",
+              "leftValue": "={{ Number($json.base_fare) }}",
+              "rightValue": "={{ Number($('Get Active Price Alerts').item.json.target_price) }}",
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        400,
+        -112
+      ],
+      "id": "3db92538-b4b8-42d7-9203-e80b534cada8",
+      "name": "check_price_decrease or not"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "493456f7-fee3-4950-89f9-bcced1e4736f",
+              "leftValue": "={{ $('Get Active Price Alerts').item.json.last_notified_price }}",
+              "rightValue": "={{ $json.base_fare }}",
+              "operator": {
+                "type": "number",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        656,
+        -128
+      ],
+      "id": "2940672d-8768-467e-b96a-d21f3b5dc9d2",
+      "name": "Already Notified or not"
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/passenger",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "passenger_id",
+              "value": "={{ 'eq.' + $('Get Active Price Alerts').item.json.passenger_id }}"
+            },
+            {
+              "name": "select",
+              "value": "passenger_id,full_name,email"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        880,
+        -208
+      ],
+      "id": "a59258b7-a232-407e-afc7-8770b05e4cea",
+      "name": "Get Passenger"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "Price Drop Alert for Your Flight",
+        "message": "=Hi {{ $json.full_name }},  Good news! The fare for a flight you're watching has dropped.  Flight ID: {{ $('Get Active Price Alerts').item.json.flight_id }} Seat Class: {{ $('Get Active Price Alerts').item.json.seat_class }} Your Target Price: PKR {{ $('Get Active Price Alerts').item.json.target_price }} Current Price: PKR {{ $('Get Current Fare.').item.json.base_fare }}  The current fare has reached or fallen below your target price.  Regards, Flight Management System",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1104,
+        -208
+      ],
+      "id": "f347ce43-790c-4f8d-b77d-a3164438054d",
+      "name": "Send a message",
+      "webhookId": "39e24ab4-540f-4f7d-a54d-a8e07c46f67c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mUo1iQT8HszcVinP",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/price_alerts",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "price_alert_id",
+              "value": "={{ 'eq.' + $('Get Active Price Alerts').item.json.price_alert_id }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  last_notified_price: $('Get Current Fare.').item.json.base_fare,\n  updated_at: new Date().toISOString()\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1328,
+        -208
+      ],
+      "id": "b37d6f72-b07e-46be-b6f2-4d9ce97e7223",
+      "name": "Update Price Alert"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 30 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Get Active Price Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Price Alerts": {
+      "main": [
+        [
+          {
+            "node": "Get Current Fare.",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Current Fare.": {
+      "main": [
+        [
+          {
+            "node": "check_price_decrease or not",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_price_decrease or not": {
+      "main": [
+        [
+          {
+            "node": "Already Notified or not",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already Notified or not": {
+      "main": [
+        [
+          {
+            "node": "Get Passenger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Passenger": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Update Price Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8d5b7074-2ff9-4b18-8344-7620abc6badf",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b30f7931c3f23c168f69d8184362b541d863725a9b7527b32e63d62c0e9fc53b"
+  },
+  "nodeGroups": [],
+  "id": "6XJRZ1QjkNWde8bf",
+  "tags": []
+}

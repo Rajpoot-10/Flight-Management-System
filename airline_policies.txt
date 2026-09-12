@@ -1,0 +1,438 @@
+FLIGHT MANAGEMENT SYSTEM
+AIRLINE PASSENGER POLICIES
+Version: 1.0
+Effective Date: September 2026
+
+==================================================
+1. GENERAL POLICY
+==================================================
+
+These policies apply to bookings created through the Flight Management System.
+
+Passengers are responsible for providing accurate personal and booking information.
+
+All bookings, cancellations, refunds, seat assignments, waitlist offers, and notifications are subject to flight availability and the fare rules associated with the booking.
+
+The system currently supports three travel classes:
+
+- First Class
+- Business Class
+- Economy Class
+
+The system supports two fare types:
+
+- Basic Fare
+- Flexible Fare
+
+
+==================================================
+2. BASIC FARE POLICY
+==================================================
+
+Basic Fare is the restricted fare option available for First Class, Business Class, and Economy Class.
+
+Basic Fare rules:
+
+- Basic Fare bookings are non-refundable.
+- Voluntary booking changes are not allowed.
+- Passenger seat choice is not included.
+- Cancellation refund percentage is 0%.
+- Cancelling a Basic Fare booking does not generate a passenger refund.
+- Any seat released after cancellation may become available to another passenger or an eligible waitlisted passenger.
+
+These restrictions apply regardless of whether the passenger booked First Class, Business Class, or Economy Class using the Basic Fare.
+
+
+==================================================
+3. FLEXIBLE FARE POLICY
+==================================================
+
+Flexible Fare provides more flexibility than Basic Fare.
+
+Flexible Fare rules:
+
+- Flexible Fare bookings are refundable.
+- Booking changes are allowed.
+- Passenger seat choice is allowed.
+- The configured cancellation refund percentage is 100%.
+- When an eligible Flexible Fare booking is cancelled, the system calculates the refund according to the applicable fare rule.
+- The released seat may become available to another passenger or an eligible waitlisted passenger.
+
+These rules apply to First Class, Business Class, and Economy Class Flexible Fare bookings.
+
+
+==================================================
+4. BOOKING POLICY
+==================================================
+
+A booking can only be confirmed when the required seat hold is valid and active.
+
+A temporary seat hold does not represent a confirmed booking.
+
+A booking is confirmed only after the booking confirmation process completes successfully.
+
+The system uses idempotency protection to reduce accidental duplicate booking creation.
+
+A booking is associated with:
+
+- a flight
+- a passenger
+- a travel class
+- a fare type
+- a payment status
+- an assigned seat
+
+The requested travel class must have valid inventory.
+
+
+==================================================
+5. TEMPORARY SEAT HOLD POLICY
+==================================================
+
+Passengers may temporarily hold an available physical seat before confirming a booking.
+
+A seat hold is valid for approximately 10 minutes.
+
+While the hold is active:
+
+- the physical seat is marked as held
+- another passenger should not be assigned the same physical seat
+
+If the booking is successfully confirmed before expiry:
+
+- the seat becomes booked
+- the seat hold becomes completed
+
+If the hold expires before booking confirmation:
+
+- the hold is marked as expired
+- the physical seat is released
+- the seat may become available to another passenger
+
+Expired seat holds are automatically processed by the background automation system.
+
+
+==================================================
+6. CANCELLATION POLICY
+==================================================
+
+Passengers may request cancellation of an eligible booking.
+
+The financial result of cancellation depends on the fare type associated with the booking.
+
+Basic Fare:
+
+- refund percentage: 0%
+- the booking may be cancelled
+- no passenger refund is generated under the standard voluntary cancellation rule
+
+Flexible Fare:
+
+- refund percentage: 100%
+- eligible cancellations generate a refund based on the configured fare rule
+
+After successful cancellation:
+
+- the booking is marked as cancelled
+- the passenger booking status is updated
+- the associated seat is released
+- seat inventory is restored
+- an eligible refund record is generated when the refund amount is greater than zero
+
+
+==================================================
+7. REFUND POLICY
+==================================================
+
+Refund eligibility is determined by the fare rule associated with the booking.
+
+A refund record may contain:
+
+- booking information
+- passenger information
+- refund type
+- refund amount
+- refund status
+- refund reason
+- request time
+- processing time
+
+Basic Fare voluntary cancellation:
+
+Refund Percentage: 0%
+
+Flexible Fare eligible cancellation:
+
+Refund Percentage: 100%
+
+Refund processing must be recorded in the Flight Management System database.
+
+
+==================================================
+8. WAITLIST POLICY
+==================================================
+
+Passengers may join a flight waitlist when their requested travel class has no available inventory.
+
+A waitlist request includes:
+
+- flight
+- passenger
+- travel class
+- fare type
+- priority information
+
+Passengers waiting for the same flight and class are considered according to the system's configured priority ordering.
+
+When inventory becomes available, the system may offer the seat opportunity to the highest-priority eligible waiting passenger.
+
+The system uses database row locking during automated promotion to reduce the risk of the same waitlist opportunity being processed concurrently.
+
+
+==================================================
+9. WAITLIST OFFER AND CLAIM POLICY
+==================================================
+
+When a passenger is promoted from the waitlist:
+
+- the waitlist entry becomes offered
+- an offer expiration time is created
+- the passenger receives approximately 10 minutes to claim the offer
+
+An offer does not itself constitute a confirmed booking.
+
+When an eligible passenger successfully claims an active offer:
+
+- an available physical seat is selected
+- a temporary seat hold is created
+- the physical seat becomes held
+- the waitlist entry becomes claimed
+
+The passenger must still complete the normal booking confirmation process.
+
+Expired or invalid waitlist offers cannot be claimed.
+
+
+==================================================
+10. FLIGHT STATUS POLICY
+==================================================
+
+Flights may use the following operational statuses:
+
+- scheduled
+- delayed
+- cancelled
+- completed
+
+Passenger-facing automated reminders are only generated for eligible scheduled flights.
+
+Cancelled or otherwise ineligible flights must not generate normal check-in reminders.
+
+
+==================================================
+11. CHECK-IN REMINDER POLICY
+==================================================
+
+The system may automatically send check-in reminders for upcoming flights.
+
+A reminder is generated when:
+
+- the booking is confirmed
+- payment status is paid
+- the flight is scheduled
+- the flight falls within the configured upcoming departure window
+
+The current automated reminder window is approximately 24 hours before departure.
+
+The system records sent reminders in the notification database.
+
+A reminder already recorded for the same booking and notification type should not be sent repeatedly.
+
+Cancelled flights are excluded from normal check-in reminders.
+
+
+==================================================
+12. PRICE DROP ALERT POLICY
+==================================================
+
+Passengers may create a price alert for a specific:
+
+- flight
+- travel class
+- target price
+
+Price alerts are available for scheduled flights.
+
+The system periodically compares the current base fare with the passenger's target price.
+
+A price-drop alert becomes eligible when:
+
+Current Fare <= Passenger Target Price
+
+When the condition is satisfied:
+
+- the passenger may receive a Gmail notification
+- the notified fare is recorded as the last notified price
+
+The system uses the last notified price to prevent repeated notifications for the same fare.
+
+If the fare changes and later satisfies the alert conditions at a different price, another notification may be generated.
+
+
+==================================================
+13. SEAT INVENTORY POLICY
+==================================================
+
+Each flight maintains separate inventory for:
+
+- First Class
+- Business Class
+- Economy Class
+
+Inventory records track:
+
+- total seats
+- available seats
+- base fare
+
+Available inventory must not become negative.
+
+A successfully confirmed booking reduces the applicable available class inventory.
+
+A successful cancellation restores the applicable class inventory.
+
+Physical seat status and class-level inventory are maintained as related but distinct operational records.
+
+
+==================================================
+14. PHYSICAL SEAT POLICY
+==================================================
+
+Each physical seat belongs to a specific flight and travel class.
+
+Seat statuses may represent operational states such as:
+
+- available
+- held
+- booked
+
+A seat marked as booked cannot be assigned to another active booking.
+
+A held seat is temporarily reserved while its corresponding seat hold remains valid.
+
+Expired holds release their associated physical seats.
+
+
+==================================================
+15. PRICE AND FARE POLICY
+==================================================
+
+Each flight class may have a configured base fare.
+
+The fare displayed or used by the system may depend on the applicable flight, travel class, and fare configuration.
+
+Price alerts compare their target price against the current base fare stored for the requested flight class.
+
+All monetary values used by this demonstration system are system-configured values and do not represent the pricing policies of any real airline.
+
+
+==================================================
+16. NOTIFICATION POLICY
+==================================================
+
+The system may generate operational passenger notifications including:
+
+- check-in reminders
+- price-drop alerts
+
+Notification activity may be logged in Supabase.
+
+Notification records may include:
+
+- passenger
+- booking
+- notification type
+- recipient email
+- subject
+- message
+- notification status
+- scheduled time
+- sent time
+
+De-duplication controls should be used where applicable to reduce repeated notifications.
+
+
+==================================================
+17. BAGGAGE POLICY
+==================================================
+
+No production baggage allowance rules have currently been configured for this demonstration Flight Management System.
+
+If a passenger asks about exact baggage weight, baggage dimensions, excess baggage fees, or class-specific baggage allowances, the system must not invent an answer.
+
+Such questions should be identified as requiring an airline-approved baggage policy or human review.
+
+
+==================================================
+18. HUMAN REVIEW POLICY
+==================================================
+
+AI-generated policy answers must be based on retrieved policy information.
+
+If the available policy information does not clearly answer a passenger's question, the system should not invent a rule.
+
+Unclear, unsupported, exceptional, or conflicting cases should be escalated for human review.
+
+Where human approval is required, an AI-generated response must not be sent to the passenger until the designated reviewer approves it.
+
+
+==================================================
+19. RAG RESPONSE POLICY
+==================================================
+
+The AI policy assistant must use retrieved policy context when answering passenger questions.
+
+The assistant should:
+
+- answer only from relevant retrieved policy information
+- avoid inventing airline policies
+- distinguish Basic Fare from Flexible Fare
+- consider the passenger's actual booking fare type when booking information is available
+- provide clear explanations of cancellation and refund eligibility
+- escalate questions when the retrieved information is insufficient
+- require human approval before sending responses where the workflow requires approval
+
+Examples:
+
+Question:
+"Can I get a refund for my Basic Fare booking?"
+
+Expected policy answer:
+Under the configured Basic Fare policy, voluntary cancellation has a 0% refund percentage, so the standard Basic Fare cancellation does not generate a refund.
+
+
+Question:
+"I booked Flexible Fare. Can I cancel it?"
+
+Expected policy answer:
+Yes. Under the configured Flexible Fare policy, the booking is refundable and the configured cancellation refund percentage is 100%, subject to the booking being eligible for cancellation.
+
+
+Question:
+"How much baggage can I carry?"
+
+Expected policy answer:
+The current policy knowledge base does not define a production baggage allowance. The request should be referred for human review rather than providing an unsupported baggage limit.
+
+
+==================================================
+20. POLICY DISCLAIMER
+==================================================
+
+These policies are demonstration policies created specifically for the Flight Management System capstone project.
+
+They are not the official policies of any real airline.
+
+Operational rules stored in the system database remain authoritative for live booking transactions.
+
+Where retrieved policy text conflicts with validated transactional data or an approved operational rule, the case should be escalated for review.
