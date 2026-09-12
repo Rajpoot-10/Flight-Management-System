@@ -1,0 +1,7 @@
+import { ArrowLeft, Bot, CheckCircle2, Plane } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import "./Operations.css";
+
+const services = ["Expired seat hold release", "Automated waitlist promotion", "Flight check-in reminders", "Price drop alerts", "Daily, weekly and monthly operations reports", "Flight schedule change notifications", "Flight cancellation notifications", "Pending refund escalation", "Fraud detection and scoring", "Historical fraud review", "Airline policy RAG assistant"];
+function SystemFeatures() { const navigate = useNavigate(); return <div className="operations-page"><nav className="operations-nav"><strong onClick={() => navigate("/")}><Plane size={20} /> AeroFlow</strong><button className="ghost-button" onClick={() => navigate("/")}><ArrowLeft size={16} /> Flights</button></nav><main className="operations-container"><div className="page-intro"><span className="eyebrow">AEROFLOW PLATFORM</span><h1>System capabilities</h1><p>Background airline operations are coordinated by n8n while FastAPI remains the live operational ledger.</p></div><div className="service-grid">{services.map((service) => <article className="service-card" key={service}><div className="service-icon"><CheckCircle2 size={20} /></div><div><h3>{service}</h3><span><Bot size={14} /> Automated / Background Service</span></div></article>)}</div></main></div>; }
+export default SystemFeatures;
