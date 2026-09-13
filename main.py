@@ -71,12 +71,47 @@ def get_passenger_routes(origin: str | None = None):
         seen = set()
 
         for flight in response.data or []:
-            route = (flight.get("origin"), flight.get("destination"))
+            route = (
+                str(flight.get("origin") or "").strip(),
+                str(flight.get("destination") or "").strip(),
+            )
             if route[0] and route[1] and route not in seen:
                 seen.add(route)
                 routes.append({"origin": route[0], "destination": route[1]})
 
         return {"routes": routes}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/passenger/departures")
+def get_passenger_departures(origin: str, destination: str):
+    try:
+        normalized_origin = origin.strip()
+        normalized_destination = destination.strip()
+        now = datetime.now(timezone.utc)
+
+        response = (
+            supabase
+            .table("flights")
+            .select(
+                "flight_id,flight_number,origin,destination,"
+                "departure_time,arrival_time,flight_status"
+            )
+            .eq("flight_status", "scheduled")
+            .gt("departure_time", now.isoformat())
+            .ilike("origin", f"{normalized_origin}%")
+            .ilike("destination", f"{normalized_destination}%")
+            .order("departure_time")
+            .execute()
+        )
+
+        departures = [
+            flight for flight in (response.data or [])
+            if str(flight.get("origin") or "").strip() == normalized_origin
+            and str(flight.get("destination") or "").strip() == normalized_destination
+        ]
+        return departures
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -153,33 +188,46 @@ def create_flight(flight: FlightCreate):
 def search_flights(
     origin: str,
     destination: str,
-    travel_date: date,
-    seat_class: str
+    seat_class: str,
+    travel_date: date | None = None,
+    flight_id: int | None = None,
 ):
     try:
         now = datetime.now(timezone.utc)
-        start_of_day = datetime.combine(
-            travel_date,
-            time.min,
-            tzinfo=timezone.utc
-        )
-
-        end_of_day = start_of_day + timedelta(days=1)
-        search_start = max(start_of_day, now)
-
-        flights_response = (
+        normalized_origin = origin.strip()
+        normalized_destination = destination.strip()
+        query = (
             supabase
             .table("flights")
             .select("*")
-            .eq("origin", origin)
-            .eq("destination", destination)
-            .gte("departure_time", search_start.isoformat())
-            .lt("departure_time", end_of_day.isoformat())
             .eq("flight_status", "scheduled")
-            .execute()
+            .gt("departure_time", now.isoformat())
+            .ilike("origin", f"{normalized_origin}%")
+            .ilike("destination", f"{normalized_destination}%")
         )
 
-        flights = flights_response.data or []
+        if flight_id is not None:
+            query = query.eq("flight_id", flight_id)
+        elif travel_date is not None:
+            start_of_day = datetime.combine(
+                travel_date,
+                time.min,
+                tzinfo=timezone.utc
+            )
+            end_of_day = start_of_day + timedelta(days=1)
+            query = query.gte(
+                "departure_time",
+                max(start_of_day, now).isoformat()
+            ).lt("departure_time", end_of_day.isoformat())
+
+        flights = [
+            flight for flight in (query.execute().data or [])
+            if str(flight.get("origin") or "").strip() == normalized_origin
+            and str(flight.get("destination") or "").strip() == normalized_destination
+        ]
+
+        if flight_id is not None and not flights:
+            return []
 
         available_flights = []
 

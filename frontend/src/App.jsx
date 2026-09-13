@@ -34,15 +34,17 @@ const airportAliases = new Map(
   ])
 );
 
-function getLocalDateString() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function formatDepartureTime(value) {
+  return new Intl.DateTimeFormat(undefined, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
-function LandingDropdown({ label, value, placeholder, options, onChange }) {
+function LandingDropdown({ label, value, placeholder, options, onChange, disabled = false }) {
   const [open, setOpen] = useState(false);
   const selected = options.find((option) => option.value === value);
 
@@ -53,6 +55,7 @@ function LandingDropdown({ label, value, placeholder, options, onChange }) {
         type="button"
         className="dropdown-trigger"
         aria-expanded={open}
+        disabled={disabled}
         onClick={() => setOpen((current) => !current)}
       >
         <span className={selected ? "dropdown-value" : "dropdown-placeholder"}>
@@ -60,7 +63,7 @@ function LandingDropdown({ label, value, placeholder, options, onChange }) {
         </span>
         <ChevronDown size={17} />
       </button>
-      {open && (
+      {open && !disabled && (
         <div className="dropdown-menu">
           {options.map((option) => (
             <button
@@ -83,10 +86,11 @@ function LandingDropdown({ label, value, placeholder, options, onChange }) {
 
 function App() {
   const navigate = useNavigate();
-  const today = getLocalDateString();
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
-  const [departureDate, setDepartureDate] = useState("");
+  const [selectedDepartureId, setSelectedDepartureId] = useState("");
+  const [availableDepartures, setAvailableDepartures] = useState([]);
+  const [departuresLoading, setDeparturesLoading] = useState(false);
   const [seatClass, setSeatClass] = useState("economy");
   const [passengers, setPassengers] = useState(1);
 
@@ -95,6 +99,32 @@ function App() {
   const [error, setError] = useState("");
   const [searched, setSearched] = useState(false);
   const [availableRoutes, setAvailableRoutes] = useState([]);
+
+  useEffect(() => {
+    setSelectedDepartureId("");
+    setAvailableDepartures([]);
+
+    if (!origin || !destination) return undefined;
+
+    let active = true;
+    setDeparturesLoading(true);
+
+    const params = new URLSearchParams({ origin, destination });
+    apiFetch(`/passenger/departures?${params.toString()}`)
+      .then((data) => {
+        if (active) setAvailableDepartures(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (active) setAvailableDepartures([]);
+      })
+      .finally(() => {
+        if (active) setDeparturesLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [origin, destination]);
 
   useEffect(() => {
     let active = true;
@@ -139,7 +169,7 @@ function App() {
   const destinationLocations = Array.from(
     new Map(
       availableRoutes
-        .filter((route) => route.origin === origin)
+        .filter((route) => String(route.origin).trim().toLowerCase() === origin.trim().toLowerCase())
         .map((route) => route.destination)
         .filter(Boolean)
         .map((location) => {
@@ -161,8 +191,8 @@ function App() {
   ];
 
   const searchFlights = async () => {
-    if (!origin || !destination || !departureDate) {
-      setError("Please select origin, destination and departure date.");
+    if (!origin || !destination || !selectedDepartureId) {
+      setError("Please select origin, destination and an available departure.");
       return;
     }
 
@@ -180,7 +210,7 @@ function App() {
       const params = new URLSearchParams({
         origin,
         destination,
-        travel_date: departureDate,
+        flight_id: selectedDepartureId,
         seat_class: seatClass,
       });
 
@@ -273,9 +303,9 @@ function App() {
                   options={locationOptions}
                   onChange={(value) => {
                     setOrigin(value);
-                    if (!destinationOptions.some((option) => option.value === destination)) {
-                      setDestination("");
-                    }
+                    setDestination("");
+                    setSelectedDepartureId("");
+                    setAvailableDepartures([]);
                   }}
                 />
               </div>
@@ -303,22 +333,31 @@ function App() {
               </div>
             </div>
 
-            {/* DATE */}
+            {/* DEPARTURE */}
             <div className="search-field">
               <div className="field-icon">
                 <CalendarDays size={21} />
               </div>
 
               <div className="input-wrapper">
-                <label>DEPARTURE</label>
-
-                <input
-                  type="date"
-                  min={today}
-                  value={departureDate}
-                  onChange={(e) =>
-                    setDepartureDate(e.target.value)
+                <LandingDropdown
+                  label="DEPARTURE"
+                  value={selectedDepartureId}
+                  placeholder={
+                    !origin || !destination
+                      ? "Select route first"
+                      : departuresLoading
+                        ? "Loading departures..."
+                        : availableDepartures.length
+                          ? "Select date & time"
+                          : "No available departures"
                   }
+                  options={availableDepartures.map((departure) => ({
+                    value: String(departure.flight_id),
+                    label: `${departure.flight_number} - ${formatDepartureTime(departure.departure_time)}`,
+                  }))}
+                  disabled={!origin || !destination || departuresLoading || !availableDepartures.length}
+                  onChange={setSelectedDepartureId}
                 />
               </div>
             </div>

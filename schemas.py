@@ -1,3 +1,4 @@
+from pydantic import BaseModel, Field
 from pydantic import BaseModel, model_validator
 from pydantic import BaseModel
 from pydantic import BaseModel, Field, model_validator
@@ -24,6 +25,14 @@ class FlightCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_flight(self):
+        self.flight_number = self.flight_number.strip()
+        self.origin = self.origin.strip()
+        self.destination = self.destination.strip()
+
+        if not self.flight_number or not self.origin or not self.destination:
+            raise ValueError(
+                "flight_number, origin and destination cannot be blank")
+
         seat_total = (
             self.first_seats
             + self.business_seats
@@ -101,17 +110,10 @@ class FlightCancelRequest(BaseModel):
     reason: str = "Flight cancelled by airline"
 
 
-
-
 class PartialPassengerCancelRequest(BaseModel):
     passenger_id: int
     reason: str = "Passenger cancellation"
 
-
-
-
-from pydantic import BaseModel, Field
-from typing import Literal
 
 class ClassCapacityUpdate(BaseModel):
     seat_class: Literal["first", "business", "economy"]
