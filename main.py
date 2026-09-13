@@ -1,4 +1,5 @@
-from fastapi import HTTPException
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from datetime import date, datetime, time, timedelta, timezone
 from schemas import ClassCapacityUpdate
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,7 +7,7 @@ from schemas import PartialPassengerCancelRequest
 from schemas import FlightCancelRequest
 from schemas import FlightScheduleUpdate
 from fastapi import FastAPI, HTTPException
-from database import supabase
+from database import supabase, supabase_admin
 from schemas import FlightCreate
 from datetime import date
 from schemas import FlightCreate, SeatHoldCreate
@@ -39,6 +40,48 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+):
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    try:
+        response = supabase.auth.get_user(credentials.credentials)
+        user = response.user
+    except Exception:
+        raise HTTPException(
+            status_code=401, detail="Invalid or expired authentication token")
+
+    if not user:
+        raise HTTPException(
+            status_code=401, detail="Invalid or expired authentication token")
+    return user
+
+
+def require_admin(current_user=Depends(get_current_user)):
+    try:
+        profile_response = (
+            supabase_admin
+            .table("profiles")
+            .select("role")
+            .eq("id", current_user.id)
+            .limit(1)
+            .execute()
+        )
+        profile = (profile_response.data or [None])[0]
+    except Exception:
+        raise HTTPException(
+            status_code=403, detail="Admin profile could not be verified")
+
+    if not profile or profile.get("role") != "admin":
+        raise HTTPException(
+            status_code=403, detail="Administrator access required")
+    return current_user
+
 
 @app.get("/")
 def home():
@@ -46,7 +89,7 @@ def home():
 
 
 @app.get("/flights")
-def get_flights():
+def get_flights(_current_user=Depends(require_admin)):
     response = supabase.table("flights").select("*").execute()
     return response.data
 
@@ -117,7 +160,7 @@ def get_passenger_departures(origin: str, destination: str):
 
 
 @app.post("/flights")
-def create_flight(flight: FlightCreate):
+def create_flight(flight: FlightCreate, _current_user=Depends(require_admin)):
 
     flight_data = {
         "flight_number": flight.flight_number,
@@ -290,7 +333,7 @@ def create_passenger(passenger: PassengerCreate):
 
 
 @app.post("/flights/{flight_id}/generate-seats")
-def generate_seats(flight_id: int):
+def generate_seats(flight_id: int, _current_user=Depends(require_admin)):
 
     # 1. Check flight exists
     flight_response = (
@@ -746,7 +789,11 @@ def get_waitlist_status(waitlist_id: int):
 
 
 @app.post("/waitlist/promote/{flight_id}/{seat_class}")
-def promote_waitlist(flight_id: int, seat_class: str):
+def promote_waitlist(
+    flight_id: int,
+    seat_class: str,
+    _current_user=Depends(require_admin),
+):
 
     # 1. Check inventory
     inventory_response = (
@@ -919,7 +966,8 @@ def create_price_alert(data: PriceAlertCreate):
 @app.put("/flights/{flight_id}/schedule")
 def update_flight_schedule(
     flight_id: int,
-    schedule: FlightScheduleUpdate
+    schedule: FlightScheduleUpdate,
+    _current_user=Depends(require_admin),
 ):
     flight_res = (
         supabase.table("flights")
@@ -992,7 +1040,8 @@ def update_flight_schedule(
 @app.post("/flights/{flight_id}/cancel")
 def cancel_flight(
     flight_id: int,
-    request: FlightCancelRequest
+    request: FlightCancelRequest,
+    _current_user=Depends(require_admin),
 ):
     try:
         result = supabase.rpc(
@@ -1045,7 +1094,8 @@ def cancel_passenger_from_booking(
 @app.put("/flights/{flight_id}/class-capacity")
 def update_flight_class_capacity(
     flight_id: int,
-    request: ClassCapacityUpdate
+    request: ClassCapacityUpdate,
+    _current_user=Depends(require_admin),
 ):
     try:
         result = supabase.rpc(

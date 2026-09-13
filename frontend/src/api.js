@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./config";
+import { supabase } from "./lib/supabase";
 
 export function apiUrl(path) {
   return `${API_BASE_URL}${path}`;
@@ -19,9 +20,17 @@ export function parseApiError(data, fallback = "Request failed") {
 export async function apiFetch(path, options = {}) {
   let response;
   try {
+    const { data: { session } } = supabase
+      ? await supabase.auth.getSession()
+      : { data: { session: null } };
+    const headers = { "Content-Type": "application/json", ...options.headers };
+    if (session?.access_token && !headers.Authorization) {
+      headers.Authorization = `Bearer ${session.access_token}`;
+    }
+
     response = await fetch(apiUrl(path), {
-      headers: { "Content-Type": "application/json", ...options.headers },
       ...options,
+      headers,
     });
   } catch {
     throw new Error("Unable to reach the AeroFlow backend.");

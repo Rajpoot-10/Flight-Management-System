@@ -12,11 +12,14 @@ import {
   Users,
   BarChart3,
   ChevronDown,
+  LogOut,
+  UserCircle,
 } from "lucide-react";
 
 import "./App.css";
 import heroImage from "./assets/aeroflow-hero.png";
 import { apiFetch } from "./api";
+import { useAuth } from "./AuthContext";
 
 const airports = [
   { city: "Karachi", code: "KHI" },
@@ -86,6 +89,7 @@ function LandingDropdown({ label, value, placeholder, options, onChange, disable
 
 function App() {
   const navigate = useNavigate();
+  const { user, profile, role, signOut } = useAuth();
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
   const [selectedDepartureId, setSelectedDepartureId] = useState("");
@@ -229,6 +233,11 @@ function App() {
     }
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/", { replace: true });
+  };
+
   return (
     <div className="app">
 
@@ -250,9 +259,15 @@ function App() {
             <a href="/services">Alerts</a>
             <a href="/system">System</a>
 
-            <button className="admin-btn" onClick={() => navigate("/admin")}>
-              Admin
-            </button>
+            {role === "admin" && <button className="admin-btn" onClick={() => navigate("/admin")}>Admin</button>}
+            {user ? (
+              <div className="account-menu">
+                <span className="account-label"><UserCircle size={17} /> {profile?.full_name || user.email}</span>
+                <button className="account-logout" onClick={handleSignOut} title="Log out"><LogOut size={16} /></button>
+              </div>
+            ) : (
+              <button className="admin-btn" onClick={() => navigate("/login")}>Sign in</button>
+            )}
           </div>
 
         </div>

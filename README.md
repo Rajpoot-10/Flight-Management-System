@@ -235,6 +235,34 @@ SUPABASE_URL=your_supabase_url
 SUPABASE_KEY=your_supabase_key
 ```
 
+### Authentication and admin access
+
+Apply `supabase/migrations/20260913000000_profiles_and_auth.sql` in the Supabase SQL editor. It creates the passenger-default `profiles` table, the signup trigger, and profile RLS policies. Promote an existing account manually only after verifying the user UUID:
+
+```sql
+UPDATE public.profiles
+SET role = 'admin'
+WHERE id = '<USER_UUID>';
+```
+
+Set these Vercel variables for the frontend:
+
+```text
+VITE_API_BASE_URL=https://flight-management-system-rdmc.onrender.com
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<supabase-anon-key>
+```
+
+Set these Render variables for FastAPI. `SUPABASE_SERVICE_ROLE_KEY` stays server-side and must never be added to Vercel:
+
+```text
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_KEY=<existing-backend-key>
+SUPABASE_SERVICE_ROLE_KEY=<supabase-service-role-key>
+```
+
+The `/admin` route and flight operations require a valid Supabase access token and an `admin` profile. Passenger search, booking, seat selection, cancellation, waitlist, and price-alert endpoints remain available according to their existing behavior.
+
 > Never commit API keys, database credentials, or other secrets to GitHub.
 
 ---
