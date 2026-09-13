@@ -62,6 +62,14 @@ def get_current_user(
     return user
 
 
+def get_optional_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+):
+    if not credentials:
+        return None
+    return get_current_user(credentials)
+
+
 def require_admin(current_user=Depends(get_current_user)):
     try:
         profile_response = (
@@ -301,15 +309,20 @@ def search_flights(
 
 
 @app.post("/passenger")
-def create_passenger(passenger: PassengerCreate):
+def create_passenger(
+    passenger: PassengerCreate,
+    current_user=Depends(get_optional_user),
+):
 
     passenger_data = {
         "full_name": passenger.full_name,
         "email": passenger.email,
         "phone": passenger.phone,
         "passport_number": passenger.passport_number,
-        "nationality": passenger.nationality
+        "nationality": passenger.nationality,
     }
+    if current_user:
+        passenger_data["auth_user_id"] = current_user.id
 
     response = (
         supabase
@@ -580,8 +593,11 @@ def create_booking(data: BookingCreate):
 
 
 @app.post("/bookings/{booking_id}/cancel")
-def cancel_booking(booking_id: int):
+def cancel_booking(booking_id: int, current_user=Depends(get_current_user)):
     try:
+        if not booking_belongs_to_user(booking_id, current_user.id):
+            raise HTTPException(status_code=404, detail="Booking not found")
+
         result = supabase.rpc(
             "cancel_booking_transaction",
             {
@@ -596,8 +612,7 @@ def cancel_booking(booking_id: int):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.get("/bookings/{booking_id}")
-def get_booking(booking_id: int):
+def load_booking_record(booking_id: int):
     booking_response = (
         supabase.table("bookings").select(
             "*").eq("booking_id", booking_id).execute()
@@ -645,6 +660,87 @@ def get_booking(booking_id: int):
         "seats": seat_rows,
         "refunds": refunds_response.data or [],
     }
+
+
+def booking_belongs_to_user(booking_id: int, user_id: str) -> bool:
+    passenger_response = (
+        supabase.table("passenger")
+        .select("passenger_id")
+        .eq("auth_user_id", user_id)
+        .execute()
+    )
+    passenger_ids = [
+        row["passenger_id"] for row in passenger_response.data or []
+    ]
+    if not passenger_ids:
+        return False
+
+    booking_response = (
+        supabase.table("bookings")
+        .select("booking_id")
+        .eq("booking_id", booking_id)
+        .in_("passenger_id", passenger_ids)
+        .execute()
+    )
+    if booking_response.data:
+        return True
+
+    link_response = (
+        supabase.table("booking_passengers")
+        .select("booking_id")
+        .eq("booking_id", booking_id)
+        .in_("passenger_id", passenger_ids)
+        .execute()
+    )
+    return bool(link_response.data)
+
+
+@app.get("/me/bookings")
+def get_my_bookings(current_user=Depends(get_current_user)):
+    passenger_response = (
+        supabase.table("passenger")
+        .select("passenger_id")
+        .eq("auth_user_id", current_user.id)
+        .execute()
+    )
+    passenger_ids = [
+        row["passenger_id"] for row in passenger_response.data or []
+    ]
+    if not passenger_ids:
+        return []
+
+    booking_ids = set()
+    lead_bookings = (
+        supabase.table("bookings")
+        .select("booking_id")
+        .in_("passenger_id", passenger_ids)
+        .execute()
+    )
+    booking_ids.update(
+        row["booking_id"] for row in lead_bookings.data or []
+    )
+
+    linked_bookings = (
+        supabase.table("booking_passengers")
+        .select("booking_id")
+        .in_("passenger_id", passenger_ids)
+        .execute()
+    )
+    booking_ids.update(
+        row["booking_id"] for row in linked_bookings.data or []
+    )
+
+    return [
+        load_booking_record(booking_id)
+        for booking_id in sorted(booking_ids)
+    ]
+
+
+@app.get("/bookings/{booking_id}")
+def get_booking(booking_id: int, current_user=Depends(get_current_user)):
+    if not booking_belongs_to_user(booking_id, current_user.id):
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return load_booking_record(booking_id)
 
 
 @app.post("/waitlist")
@@ -1067,9 +1163,13 @@ def cancel_flight(
 @app.post("/bookings/{booking_id}/passengers/cancel")
 def cancel_passenger_from_booking(
     booking_id: int,
-    request: PartialPassengerCancelRequest
+    request: PartialPassengerCancelRequest,
+    current_user=Depends(get_current_user),
 ):
     try:
+        if not booking_belongs_to_user(booking_id, current_user.id):
+            raise HTTPException(status_code=404, detail="Booking not found")
+
         result = supabase.rpc(
             "cancel_booking_passenger",
             {

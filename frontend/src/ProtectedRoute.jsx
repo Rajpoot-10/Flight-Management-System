@@ -15,3 +15,13 @@ export function AdminRoute({ children }) {
 
     return children;
 }
+
+export function AuthenticatedRoute({ children }) {
+    const { user, loading } = useAuth();
+    const location = useLocation();
+
+    if (loading) return <AuthLoading />;
+    if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+
+    return children;
+}

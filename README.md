@@ -245,6 +245,8 @@ SET role = 'admin'
 WHERE id = '<USER_UUID>';
 ```
 
+Also apply `supabase/migrations/20260913000001_passenger_auth_link.sql`. It adds a nullable `passenger.auth_user_id` link for new authenticated passenger records and leaves historical rows unchanged. The authenticated Manage Booking page reads `/me/bookings`, which derives results from that server-side link and never accepts an email or passenger ID from the browser.
+
 Set these Vercel variables for the frontend:
 
 ```text
