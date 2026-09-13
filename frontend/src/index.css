@@ -58,11 +58,22 @@ h2 {
   font-family: var(--heading);
   font-weight: 500;
   color: var(--text-h);
+  width: 100%;
+  min-width: 0;
+  min-height: 100%;
 }
 
-h1 {
+html {
+  overflow-x: hidden;
+}
+
+body {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+#root {
   font-size: 56px;
-  letter-spacing: -1.68px;
   margin: 32px 0;
 
   @media (max-width: 1024px) {
@@ -84,6 +95,13 @@ h2 {
 
 p {
   margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  max-width: 100%;
 }
 
 code,

@@ -2,12 +2,14 @@
     min-height: 100vh;
     display: grid;
     place-items: center;
-    padding: 32px 20px;
+    width: 100%;
+    padding: clamp(20px, 5vw, 48px) 16px;
     background: linear-gradient(135deg, #f7f8ff 0%, #eefbff 100%);
 }
 
 .auth-panel {
     width: min(100%, 470px);
+    min-width: 0;
     padding: 34px;
     border: 1px solid rgba(105, 80, 234, 0.14);
     border-radius: 22px;
@@ -84,6 +86,7 @@
 
 .auth-form input {
     width: 100%;
+    min-height: 44px;
     padding: 12px 13px;
     border: 1px solid #d9def0;
     border-radius: 10px;
@@ -102,6 +105,7 @@
     justify-content: center;
     align-items: center;
     width: 100%;
+    min-height: 44px;
     padding: 13px 16px;
     border: 0;
     border-radius: 10px;
@@ -158,6 +162,17 @@
 
 @media (max-width: 520px) {
     .auth-panel {
-        padding: 26px 21px;
+        padding: 24px 18px;
+        border-radius: 16px;
+    }
+
+    .auth-brand {
+        margin: 24px 0 28px;
+    }
+
+    .auth-description,
+    .auth-error,
+    .auth-success {
+        overflow-wrap: anywhere;
     }
 }

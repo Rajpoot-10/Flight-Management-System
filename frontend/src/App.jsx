@@ -14,6 +14,8 @@ import {
   ChevronDown,
   LogOut,
   UserCircle,
+  Menu,
+  X,
 } from "lucide-react";
 
 import "./App.css";
@@ -103,6 +105,7 @@ function App() {
   const [error, setError] = useState("");
   const [searched, setSearched] = useState(false);
   const [availableRoutes, setAvailableRoutes] = useState([]);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     setSelectedDepartureId("");
@@ -235,6 +238,7 @@ function App() {
 
   const handleSignOut = async () => {
     await signOut();
+    setMobileMenuOpen(false);
     navigate("/", { replace: true });
   };
 
@@ -253,13 +257,23 @@ function App() {
             <span>AeroFlow</span>
           </div>
 
-          <div className="nav-links">
-            <a href="#flights">Flights</a>
-            <a href="/manage-booking">Manage Booking</a>
-            <a href="/services">Alerts</a>
-            <a href="/system">System</a>
+          <button
+            className="mobile-menu-toggle"
+            type="button"
+            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((current) => !current)}
+          >
+            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
 
-            {role === "admin" && <button className="admin-btn" onClick={() => navigate("/admin")}>Admin</button>}
+          <div className={`nav-links ${mobileMenuOpen ? "is-open" : ""}`}>
+            <a href="#flights" onClick={() => setMobileMenuOpen(false)}>Flights</a>
+            <a href="/manage-booking" onClick={() => setMobileMenuOpen(false)}>Manage Booking</a>
+            <a href="/services" onClick={() => setMobileMenuOpen(false)}>Alerts</a>
+            <a href="/system" onClick={() => setMobileMenuOpen(false)}>System</a>
+
+            {role === "admin" && <button className="admin-btn" onClick={() => { setMobileMenuOpen(false); navigate("/admin"); }}>Admin</button>}
             {user ? (
               <div className="account-menu">
                 <span className="account-label"><UserCircle size={17} /> {profile?.full_name || user.email}</span>

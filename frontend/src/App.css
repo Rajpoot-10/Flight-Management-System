@@ -177,6 +177,19 @@ select {
   cursor: pointer;
 }
 
+.mobile-menu-toggle {
+  display: none;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dcd5ff;
+  border-radius: 10px;
+  color: #674be7;
+  background: #f7f5ff;
+  cursor: pointer;
+}
+
 /* =========================
    HERO
 ========================= */
@@ -586,6 +599,15 @@ select {
   .features {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  .hero-content {
+    width: min(100% - 40px, 1100px);
+  }
+
+  .search-field {
+    min-width: 0;
+    padding-inline: 16px;
+  }
 }
 
 @media (max-width: 760px) {
@@ -594,15 +616,72 @@ select {
   }
 
   .nav-container {
-    width: 92%;
+    width: calc(100% - 32px);
+    position: relative;
   }
 
   .nav-links {
-    gap: 12px;
+    display: none;
+    position: absolute;
+    z-index: 60;
+    top: calc(100% + 10px);
+    right: 0;
+    width: min(280px, calc(100vw - 32px));
+    padding: 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    border: 1px solid #e2e6f0;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .98);
+    box-shadow: 0 18px 45px rgba(47, 61, 95, .18);
+    backdrop-filter: blur(18px);
+  }
+
+  .nav-links.is-open {
+    display: flex;
+  }
+
+  .nav-links a,
+  .nav-links .admin-btn,
+  .nav-links .account-menu {
+    display: flex;
+    width: 100%;
+    min-height: 44px;
+    align-items: center;
+    padding: 10px 12px;
   }
 
   .nav-links a {
-    display: none;
+    border-radius: 8px;
+  }
+
+  .nav-links a:hover {
+    background: #f7f5ff;
+  }
+
+  .nav-links .admin-btn {
+    justify-content: flex-start;
+    padding: 10px 12px;
+  }
+
+  .account-menu {
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .account-label {
+    max-width: none;
+  }
+
+  .account-logout {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .mobile-menu-toggle {
+    display: inline-flex;
   }
 
   .hero {
@@ -612,13 +691,14 @@ select {
   .hero h1 {
     margin-top: 28px;
 
-    font-size: 52px;
+    font-size: clamp(38px, 11vw, 52px);
 
     letter-spacing: -2.5px;
   }
 
   .hero-description {
     font-size: 16px;
+    max-width: 36rem;
   }
 
   .search-card {
@@ -635,6 +715,104 @@ select {
 
   .features {
     grid-template-columns: 1fr;
+  }
+
+  .hero-content {
+    width: calc(100% - 32px);
+  }
+
+  .hero-badge {
+    max-width: 100%;
+    text-align: center;
+  }
+
+  .search-card {
+    margin-top: 36px;
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .search-field {
+    min-height: 76px;
+    padding: 10px 8px;
+    gap: 11px;
+  }
+
+  .field-icon {
+    flex: 0 0 40px;
+    min-width: 40px;
+    height: 40px;
+  }
+
+  .dropdown-trigger,
+  .input-wrapper input,
+  .input-wrapper select {
+    font-size: 15px;
+  }
+
+  .dropdown-menu {
+    left: 0;
+    width: min(280px, calc(100vw - 64px));
+  }
+
+  .flight-result-card {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 16px;
+    padding: 18px;
+  }
+
+  .select-flight-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .results-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 576px) {
+  .navbar {
+    height: 64px;
+  }
+
+  .brand {
+    font-size: 19px;
+  }
+
+  .brand-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .hero {
+    min-height: calc(100svh - 64px);
+    padding: 32px 0 40px;
+  }
+
+  .hero h1 {
+    margin: 22px auto 14px;
+    line-height: 1.04;
+    letter-spacing: -1.8px;
+  }
+
+  .hero-description {
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .feature-card {
+    min-height: 0;
+    padding: 18px;
+  }
+
+  .feature-icon {
+    flex: 0 0 50px;
+    min-width: 50px;
+    height: 50px;
   }
 }
 

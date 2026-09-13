@@ -573,3 +573,158 @@ body {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+@media (max-width: 992px) {
+  .booking-container {
+    width: min(100% - 40px, 760px);
+    padding-top: 40px;
+  }
+
+  .booking-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .booking-sidebar {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .booking-navbar {
+    min-height: 68px;
+    height: auto;
+    padding: 12px 20px;
+    gap: 12px;
+  }
+
+  .booking-brand {
+    min-width: 0;
+    font-size: 19px;
+  }
+
+  .back-button {
+    min-height: 44px;
+    padding: 9px 12px;
+    white-space: nowrap;
+  }
+
+  .booking-container {
+    width: calc(100% - 32px);
+    padding: 32px 0 56px;
+  }
+
+  .booking-heading h1 {
+    font-size: clamp(30px, 8vw, 42px);
+    line-height: 1.08;
+  }
+
+  .booking-layout {
+    margin-top: 24px;
+    gap: 16px;
+  }
+
+  .booking-card {
+    padding: 20px;
+    border-radius: 16px;
+  }
+
+  .summary-top,
+  .fare-total,
+  .seat-selection-summary {
+    flex-wrap: wrap;
+  }
+
+  .route-display {
+    margin: 24px 0;
+    gap: 12px;
+  }
+
+  .route-display strong {
+    font-size: clamp(22px, 7vw, 32px);
+    overflow-wrap: anywhere;
+  }
+
+  .route-line svg {
+    margin: 0 6px;
+  }
+
+  .flight-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .passenger-form {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .form-field.full {
+    grid-column: auto;
+  }
+
+  .seat-map,
+  .seat-grid {
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+
+  .seat-grid {
+    grid-template-columns: repeat(6, minmax(44px, 1fr));
+    min-width: 330px;
+    gap: 8px;
+  }
+
+  .seat-button {
+    min-height: 44px;
+    height: 48px;
+    padding: 0 4px;
+    font-size: 12px;
+  }
+
+  .seat-selection-summary {
+    align-items: flex-start;
+  }
+
+  .seat-selection-summary small {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .continue-button,
+  .cancel-booking-button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 576px) {
+  .booking-navbar {
+    padding-inline: 16px;
+  }
+
+  .booking-brand span {
+    display: none;
+  }
+
+  .back-button {
+    margin-left: auto;
+  }
+
+  .booking-heading p {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .flight-meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fare-row {
+    gap: 12px;
+  }
+
+  .fare-row strong,
+  .fare-total strong {
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+}

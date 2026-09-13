@@ -608,3 +608,171 @@
     margin: 0;
     color: #667085;
 }
+
+@media (max-width: 992px) {
+    .operations-container {
+        width: min(100% - 40px, 900px);
+        padding-top: 42px;
+    }
+
+    .admin-grid,
+    .service-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-grid {
+        align-items: start;
+    }
+
+    .form-three,
+    .admin-form .form-three:first-of-type {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .operation-card {
+        min-width: 0;
+        padding: 22px;
+    }
+}
+
+@media (max-width: 768px) {
+    .operations-nav {
+        min-height: 68px;
+        height: auto;
+        padding: 12px 20px;
+        gap: 12px;
+    }
+
+    .operations-nav strong {
+        min-width: 0;
+        font-size: 18px;
+    }
+
+    .operations-nav .ghost-button {
+        min-height: 44px;
+        padding: 9px 12px;
+        white-space: nowrap;
+    }
+
+    .operations-container {
+        width: calc(100% - 32px);
+        padding: 34px 0 60px;
+    }
+
+    .page-intro {
+        margin-bottom: 24px;
+    }
+
+    .page-intro h1 {
+        font-size: clamp(30px, 8vw, 42px);
+        line-height: 1.1;
+    }
+
+    .page-intro p {
+        font-size: 14px;
+        line-height: 1.55;
+    }
+
+    .admin-grid,
+    .service-grid,
+    .stats-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .detail-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin: 22px 0;
+    }
+
+    .operation-card {
+        padding: 18px;
+        border-radius: 15px;
+    }
+
+    .operation-card h2 {
+        overflow-wrap: anywhere;
+    }
+
+    .form-three,
+    .admin-form .form-three:first-of-type {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .primary-button,
+    .secondary-button,
+    .danger-button {
+        min-height: 44px;
+    }
+
+    .admin-actions,
+    .admin-actions button,
+    .empty-bookings .primary-button {
+        width: 100%;
+    }
+
+    .flight-list {
+        overflow: hidden;
+    }
+
+    .flight-row {
+        min-width: 560px;
+    }
+
+    .flight-list {
+        overflow-x: auto;
+    }
+
+    .booking-detail .detail-header {
+        flex-wrap: wrap;
+    }
+
+    .booking-detail .danger-button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 576px) {
+    .operations-nav {
+        padding-inline: 16px;
+    }
+
+    .operations-nav strong {
+        font-size: 16px;
+    }
+
+    .operations-nav .ghost-button {
+        font-size: 13px;
+    }
+
+    .detail-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .detail-header,
+    .section-title {
+        gap: 10px;
+    }
+
+    .detail-header h2,
+    .section-title h2 {
+        font-size: 19px;
+    }
+
+    .status {
+        flex: 0 0 auto;
+    }
+
+    .service-card {
+        padding: 18px;
+    }
+
+    .lookup-form {
+        padding: 8px;
+    }
+
+    .lookup-form .primary-button {
+        width: 100%;
+        min-width: 0;
+    }
+}
