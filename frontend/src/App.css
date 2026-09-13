@@ -199,9 +199,8 @@ select {
   position: relative;
 
   width: 100%;
-  min-height: calc(100vh - 76px);
+  min-height: auto;
 
-  background-color: #a9cff4;
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
@@ -218,8 +217,8 @@ select {
 
   background:
     linear-gradient(180deg,
-      rgba(255, 255, 255, 0.08),
-      rgba(255, 255, 255, 0.02));
+      rgba(255, 255, 255, 0.2),
+      rgba(255, 255, 255, 0.08));
 }
 
 .hero-content {
@@ -579,7 +578,7 @@ select {
    RESPONSIVE
 ========================= */
 
-@media (max-width: 1180px) {
+@media (max-width: 992px) {
   .search-card {
     grid-template-columns: 1fr 1fr;
     gap: 5px;
@@ -791,7 +790,7 @@ select {
   }
 
   .hero {
-    min-height: calc(100svh - 64px);
+    min-height: auto;
     padding: 32px 0 40px;
   }
 
