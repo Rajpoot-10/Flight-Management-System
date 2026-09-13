@@ -116,7 +116,7 @@ function Booking() {
           ? `Booking #${bookingId} has been created successfully.`
           : "Your flight booking has been created successfully."
       );
-      navigate("/");
+      navigate("/manage-booking");
 
     } catch (error) {
       setBookingError(error.message);
