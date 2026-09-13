@@ -67,7 +67,13 @@ def get_optional_user(
 ):
     if not credentials:
         return None
-    return get_current_user(credentials)
+    try:
+        response = supabase.auth.get_user(credentials.credentials)
+        return response.user
+    except Exception:
+        # Passenger creation remains compatible with the pre-auth booking flow.
+        # Protected endpoints continue to use get_current_user and reject it.
+        return None
 
 
 def require_admin(current_user=Depends(get_current_user)):
