@@ -201,8 +201,9 @@ select {
   width: 100%;
   min-height: calc(100vh - 76px);
 
+  background-color: #a9cff4;
   background-size: cover;
-  background-position: center;
+  background-position: center center;
   background-repeat: no-repeat;
 
   display: flex;
@@ -217,8 +218,8 @@ select {
 
   background:
     linear-gradient(180deg,
-      rgba(255, 255, 255, 0.2),
-      rgba(255, 255, 255, 0.08));
+      rgba(255, 255, 255, 0.08),
+      rgba(255, 255, 255, 0.02));
 }
 
 .hero-content {
