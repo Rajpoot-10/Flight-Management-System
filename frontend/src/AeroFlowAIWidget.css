@@ -1,0 +1,522 @@
+.aero-ai-widget {
+    position: fixed;
+    right: clamp(16px, 2.2vw, 28px);
+    bottom: clamp(16px, 2.2vw, 28px);
+    z-index: 1000;
+    font-family: inherit;
+}
+
+.aero-ai-launcher {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 48px;
+    padding: 7px 14px 7px 8px;
+    border: 1px solid rgba(222, 224, 239, .95);
+    border-radius: 999px;
+    color: #25304a;
+    background: rgba(255, 255, 255, .96);
+    box-shadow: 0 14px 34px rgba(41, 53, 96, .18);
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    animation: aero-ai-launch 360ms ease both;
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+.aero-ai-launcher:hover {
+    border-color: #c2bbfa;
+    box-shadow: 0 17px 38px rgba(41, 53, 96, .23);
+    transform: translateY(-2px);
+}
+
+.aero-ai-launcher:focus-visible,
+.aero-ai-icon-button:focus-visible,
+.aero-ai-new-chat:focus-visible,
+.aero-ai-suggestions button:focus-visible,
+.aero-ai-send:focus-visible,
+.aero-ai-retry:focus-visible {
+    outline: 3px solid rgba(24, 188, 232, .35);
+    outline-offset: 2px;
+}
+
+.aero-ai-launcher-icon,
+.aero-ai-welcome-icon,
+.aero-ai-small-avatar,
+.aero-ai-avatar {
+    display: grid;
+    place-items: center;
+    color: #fff;
+    background: linear-gradient(135deg, #7052ef, #3d8bea 65%, #18bce8);
+}
+
+.aero-ai-launcher-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 11px;
+    box-shadow: 0 5px 15px rgba(112, 82, 239, .26);
+}
+
+.aero-ai-attention {
+    position: absolute;
+    top: 4px;
+    right: 5px;
+    width: 7px;
+    height: 7px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: #12b76a;
+    box-sizing: content-box;
+}
+
+.aero-ai-panel {
+    display: flex;
+    flex-direction: column;
+    width: min(410px, calc(100vw - 32px));
+    height: min(620px, calc(100dvh - 44px));
+    overflow: hidden;
+    border: 1px solid #e0e4ef;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, .98);
+    box-shadow: 0 22px 65px rgba(38, 48, 85, .24);
+    animation: aero-ai-panel-in 220ms ease both;
+}
+
+.aero-ai-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 15px 16px;
+    border-bottom: 1px solid #edf0f5;
+    background: linear-gradient(120deg, #f8f6ff, #f1fcff);
+}
+
+.aero-ai-heading {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 10px;
+}
+
+.aero-ai-avatar {
+    width: 35px;
+    height: 35px;
+    flex: 0 0 auto;
+    border-radius: 11px;
+    box-shadow: 0 6px 16px rgba(112, 82, 239, .2);
+}
+
+.aero-ai-heading strong,
+.aero-ai-heading>div>span {
+    display: block;
+}
+
+.aero-ai-heading strong {
+    color: #182230;
+    font-size: 14px;
+}
+
+.aero-ai-heading>div>span {
+    margin-top: 2px;
+    color: #667085;
+    font-size: 10px;
+}
+
+.aero-ai-online {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 4px;
+    margin-left: 4px;
+    color: #027a48 !important;
+    font-size: 10px;
+}
+
+.aero-ai-online i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #12b76a;
+}
+
+.aero-ai-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.aero-ai-new-chat,
+.aero-ai-icon-button,
+.aero-ai-retry {
+    border: 1px solid #dfe3ea;
+    border-radius: 8px;
+    background: #fff;
+    color: #475467;
+    cursor: pointer;
+}
+
+.aero-ai-new-chat {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 7px 8px;
+    font-size: 10px;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+.aero-ai-icon-button {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+}
+
+.aero-ai-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 20px 16px;
+    scroll-behavior: smooth;
+}
+
+.aero-ai-welcome {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 300px;
+    margin: 34px auto 0;
+    text-align: center;
+}
+
+.aero-ai-welcome-icon {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 14px;
+    border-radius: 16px;
+    box-shadow: 0 8px 20px rgba(112, 82, 239, .2);
+    animation: aero-ai-float 3.4s ease-in-out infinite;
+}
+
+.aero-ai-welcome h2 {
+    margin: 0;
+    color: #182230;
+    font-size: 21px;
+}
+
+.aero-ai-welcome p {
+    margin: 7px 0 3px;
+    color: #344054;
+    font-size: 14px;
+}
+
+.aero-ai-welcome small {
+    color: #667085;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.aero-ai-suggestions {
+    display: grid;
+    gap: 7px;
+    width: 100%;
+    margin-top: 20px;
+}
+
+.aero-ai-suggestions button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 9px 10px;
+    border: 1px solid #e5e7f0;
+    border-radius: 9px;
+    background: #fff;
+    color: #475467;
+    font-size: 11px;
+    text-align: left;
+    cursor: pointer;
+    transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.aero-ai-suggestions button:hover:not(:disabled) {
+    border-color: #bbb4f6;
+    box-shadow: 0 5px 14px rgba(112, 82, 239, .1);
+    transform: translateY(-1px);
+}
+
+.aero-ai-suggestions svg {
+    flex: 0 0 auto;
+    color: #7052ef;
+}
+
+.aero-ai-suggestions button:disabled {
+    cursor: not-allowed;
+    opacity: .55;
+}
+
+.aero-ai-message {
+    display: flex;
+    margin-bottom: 17px;
+    animation: aero-ai-message-in 240ms ease both;
+}
+
+.aero-ai-message.user {
+    justify-content: flex-end;
+}
+
+.aero-ai-user-bubble {
+    max-width: 78%;
+    padding: 10px 12px;
+    border-radius: 15px 15px 3px 15px;
+    color: #fff;
+    background: linear-gradient(135deg, #7052ef, #3d8bea 68%, #18bce8);
+    font-size: 12px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+}
+
+.aero-ai-assistant-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    max-width: 88%;
+}
+
+.aero-ai-small-avatar {
+    width: 25px;
+    height: 25px;
+    flex: 0 0 auto;
+    border-radius: 8px;
+}
+
+.aero-ai-assistant-content {
+    min-width: 0;
+}
+
+.aero-ai-assistant-content>strong {
+    display: block;
+    margin: 1px 0 4px;
+    color: #475467;
+    font-size: 10px;
+}
+
+.aero-ai-assistant-bubble {
+    padding: 10px 12px;
+    border: 1px solid #e9e8f3;
+    border-radius: 3px 14px 14px 14px;
+    background: #f8f7ff;
+    color: #344054;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+.aero-ai-message.error .aero-ai-assistant-bubble {
+    border-color: #fecdca;
+    background: #fff8f7;
+    color: #b42318;
+}
+
+.aero-ai-retry {
+    display: block;
+    margin-top: 9px;
+    padding: 5px 8px;
+    color: #b42318;
+    font-size: 10px;
+}
+
+.aero-ai-thinking {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #667085;
+}
+
+.aero-ai-thinking i {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #7052ef;
+    animation: aero-ai-dot 1.1s infinite ease-in-out;
+}
+
+.aero-ai-thinking i:nth-last-child(2) {
+    animation-delay: .15s;
+}
+
+.aero-ai-thinking i:last-child {
+    animation-delay: .3s;
+}
+
+.aero-ai-composer {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 11px;
+    border-top: 1px solid #edf0f5;
+    background: #fff;
+}
+
+.aero-ai-composer textarea {
+    min-width: 0;
+    width: 100%;
+    max-height: 100px;
+    resize: none;
+    padding: 10px 11px;
+    border: 1px solid #dfe3ea;
+    border-radius: 12px;
+    color: #182230;
+    background: #fafbfc;
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.45;
+    outline: none;
+}
+
+.aero-ai-composer textarea:focus {
+    border-color: #8069ef;
+    box-shadow: 0 0 0 3px rgba(112, 82, 239, .08);
+}
+
+.aero-ai-send {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    border: 0;
+    border-radius: 11px;
+    color: #fff;
+    background: linear-gradient(135deg, #7052ef, #18bce8);
+    cursor: pointer;
+    transition: transform .18s ease, opacity .18s ease, box-shadow .18s ease;
+}
+
+.aero-ai-send:hover:not(:disabled) {
+    box-shadow: 0 7px 16px rgba(76, 121, 225, .24);
+    transform: scale(1.03);
+}
+
+.aero-ai-send:active:not(:disabled) {
+    transform: scale(.97);
+}
+
+.aero-ai-send:disabled {
+    opacity: .42;
+    cursor: not-allowed;
+}
+
+.aero-ai-avatar.is-thinking,
+.aero-ai-small-avatar.is-thinking {
+    animation: aero-ai-pulse 1.7s ease-in-out infinite;
+}
+
+@keyframes aero-ai-launch {
+    from {
+        opacity: 0;
+        transform: scale(.92) translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes aero-ai-panel-in {
+    from {
+        opacity: 0;
+        transform: translateY(15px) scale(.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes aero-ai-message-in {
+    from {
+        opacity: 0;
+        transform: translateY(7px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes aero-ai-dot {
+
+    0%,
+    60%,
+    100% {
+        opacity: .3;
+        transform: translateY(0);
+    }
+
+    30% {
+        opacity: 1;
+        transform: translateY(-3px);
+    }
+}
+
+@keyframes aero-ai-pulse {
+    50% {
+        box-shadow: 0 0 0 5px rgba(112, 82, 239, .1), 0 6px 16px rgba(112, 82, 239, .22);
+    }
+}
+
+@keyframes aero-ai-float {
+    50% {
+        transform: translateY(-3px);
+    }
+}
+
+@media (max-width: 480px) {
+    .aero-ai-widget {
+        right: 8px;
+        bottom: 8px;
+    }
+
+    .aero-ai-panel {
+        width: calc(100vw - 16px);
+        height: calc(100dvh - 24px);
+        max-height: 700px;
+        border-radius: 17px;
+    }
+
+    .aero-ai-header {
+        padding: 13px;
+    }
+
+    .aero-ai-body {
+        padding: 16px 12px;
+    }
+
+    .aero-ai-user-bubble,
+    .aero-ai-assistant-row {
+        max-width: 94%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .aero-ai-launcher,
+    .aero-ai-panel,
+    .aero-ai-message,
+    .aero-ai-welcome-icon,
+    .aero-ai-avatar,
+    .aero-ai-small-avatar,
+    .aero-ai-thinking i {
+        animation: none;
+    }
+
+    .aero-ai-body {
+        scroll-behavior: auto;
+    }
+}

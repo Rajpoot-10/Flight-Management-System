@@ -17,6 +17,7 @@ import ServiceDesk from "./ServiceDesk.jsx";
 import { AuthProvider } from "./AuthContext.jsx";
 import { AdminRoute, AuthenticatedRoute } from "./ProtectedRoute.jsx";
 import { Login, Signup } from "./AuthPages.jsx";
+import AeroFlowAIWidget from "./AeroFlowAIWidget.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
@@ -32,6 +33,7 @@ createRoot(document.getElementById("root")).render(
           <Route path="/system" element={<SystemFeatures />} />
           <Route path="/services" element={<ServiceDesk />} />
         </Routes>
+        <AeroFlowAIWidget />
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>
