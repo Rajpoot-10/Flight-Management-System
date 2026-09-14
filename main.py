@@ -94,6 +94,41 @@ def get_flights(_current_user=Depends(require_admin)):
     return response.data
 
 
+@app.get("/flights/{flight_id}")
+def get_bookable_flight(flight_id: int, seat_class: str = "economy"):
+    now = datetime.now(timezone.utc)
+    flight_response = (
+        supabase.table("flights")
+        .select("*")
+        .eq("flight_id", flight_id)
+        .eq("flight_status", "scheduled")
+        .gt("departure_time", now.isoformat())
+        .limit(1)
+        .execute()
+    )
+    flight = (flight_response.data or [None])[0]
+    if not flight:
+        raise HTTPException(
+            status_code=404, detail="Flight not found or no longer available")
+
+    inventory_response = (
+        supabase.table("flight_class_inventory")
+        .select("*")
+        .eq("flight_id", flight_id)
+        .eq("seat_class", seat_class.lower())
+        .gt("available_seats", 0)
+        .limit(1)
+        .execute()
+    )
+    inventory = (inventory_response.data or [None])[0]
+    if not inventory:
+        raise HTTPException(
+            status_code=404, detail="Flight not found or no longer available")
+
+    flight["inventory"] = inventory
+    return flight
+
+
 @app.get("/passenger/routes")
 def get_passenger_routes(origin: str | None = None):
     try:

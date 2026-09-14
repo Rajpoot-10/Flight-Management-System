@@ -30,8 +30,14 @@ function Booking() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
 
-  const { flight, seatClass, passengers } = location.state || {};
+  const { flight: stateFlight, seatClass = "economy", passengers = 1 } = location.state || {};
+  const flightIdParam = new URLSearchParams(location.search).get("flight_id");
+  const hasFlightId = flightIdParam !== null;
+  const requestedFlightId = Number(flightIdParam);
   const passengerCount = Number(passengers) || 1;
+  const [flight, setFlight] = useState(stateFlight || null);
+  const [flightLoading, setFlightLoading] = useState(hasFlightId);
+  const [flightError, setFlightError] = useState("");
 
   const [availableSeats, setAvailableSeats] = useState([]);
   const [seatLoading, setSeatLoading] = useState(false);
@@ -231,6 +237,46 @@ function Booking() {
   );
 
   useEffect(() => {
+    if (!hasFlightId) {
+      setFlight(stateFlight || null);
+      setFlightLoading(false);
+      setFlightError("");
+      return undefined;
+    }
+
+    if (!Number.isInteger(requestedFlightId) || requestedFlightId <= 0) {
+      setFlight(null);
+      setFlightLoading(false);
+      setFlightError("Flight not found or no longer available.");
+      return undefined;
+    }
+
+    let active = true;
+    setFlightLoading(true);
+    setFlightError("");
+
+    apiFetch(
+      `/flights/${requestedFlightId}?seat_class=${encodeURIComponent((seatClass || "economy").toLowerCase())}`
+    )
+      .then((data) => {
+        if (!active) return;
+        setFlight(data);
+      })
+      .catch(() => {
+        if (!active) return;
+        setFlight(null);
+        setFlightError("Flight not found or no longer available.");
+      })
+      .finally(() => {
+        if (active) setFlightLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [hasFlightId, requestedFlightId, seatClass, stateFlight]);
+
+  useEffect(() => {
     setAvailableSeats([]);
     setSeatError("");
     setShowSeats(false);
@@ -332,11 +378,19 @@ function Booking() {
     }
   };
 
+  if (flightLoading) {
+    return (
+      <div className="booking-empty">
+        <h2>Loading flight details...</h2>
+      </div>
+    );
+  }
+
   if (!flight) {
     return (
       <div className="booking-empty">
-        <h2>No flight selected</h2>
-        <p>Please search and select a flight first.</p>
+        <h2>{flightError || "No flight selected"}</h2>
+        {!flightError && <p>Please search and select a flight first.</p>}
         <button onClick={() => navigate("/")}>Back to Flights</button>
       </div>
     );

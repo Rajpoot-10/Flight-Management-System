@@ -21,6 +21,23 @@ function AuthShell({ eyebrow, title, description, children }) {
     );
 }
 
+function continueToIntendedLocation(navigate, from) {
+    if (!from) {
+        navigate("/", { replace: true });
+        return;
+    }
+
+    if (typeof from === "string") {
+        navigate(from, { replace: true });
+        return;
+    }
+
+    navigate(
+        { pathname: from.pathname, search: from.search, hash: from.hash },
+        { replace: true, state: from.state }
+    );
+}
+
 export function Login() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -35,7 +52,7 @@ export function Login() {
         setLoading(true);
         try {
             await signIn(form.email.trim(), form.password);
-            navigate(location.state?.from || "/", { replace: true });
+            continueToIntendedLocation(navigate, location.state?.from);
         } catch (err) {
             setError(err.message || "Unable to sign in.");
         } finally {
@@ -81,7 +98,7 @@ export function Signup() {
         setLoading(true);
         try {
             const data = await signUp(form.fullName.trim(), form.email.trim(), form.password);
-            if (data.session) navigate(location.state?.from || "/", { replace: true });
+            if (data.session) continueToIntendedLocation(navigate, location.state?.from);
             else setMessage("Account created. Please verify your email before signing in.");
         } catch (err) {
             setError(err.message || "Unable to create your account.");

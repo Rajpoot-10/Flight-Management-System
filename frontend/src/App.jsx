@@ -503,15 +503,12 @@ function App() {
 
                     <button
                       className="select-flight-btn"
-                      onClick={() =>
-                        navigate("/booking", {
-                          state: {
-                            flight,
-                            seatClass,
-                            passengers,
-                          },
-                        })
-                      }
+                      onClick={() => navigate(`/booking?flight_id=${encodeURIComponent(flight.flight_id)}`, {
+                        state: {
+                          seatClass,
+                          passengers,
+                        },
+                      })}
                     >
                       Select Flight
                     </button>
