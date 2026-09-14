@@ -1,0 +1,392 @@
+{
+  "name": "Flight Schedule Change Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "id": "3b0c52a4-ea84-4a31-9db9-f57e72a0ac64",
+      "name": "Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/audit_logs",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "eq.flight_schedule_updated"
+            },
+            {
+              "name": "processed_at",
+              "value": "is.null"
+            },
+            {
+              "name": "select",
+              "value": "audit_id,entity_id,old_data,new_data,created_at"
+            },
+            {
+              "name": "order",
+              "value": "created_at.asc"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "60e485e0-1b90-49e7-abaf-4932d9135c97",
+      "name": "Get Unprocessed Schedule Changes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        256,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/flights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "flight_id",
+              "value": "={{ 'eq.' + $json.entity_id }}"
+            },
+            {
+              "name": "select",
+              "value": "flight_id,flight_number,origin,destination,departure_time,arrival_time,flight_status"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "56828093-33c2-4604-adc6-543a49a390d9",
+      "name": "Get Updated Flight",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        512,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "flight_id",
+              "value": "={{ 'eq.' + $json.flight_id }}"
+            },
+            {
+              "name": "booking_status",
+              "value": "eq.confirmed"
+            },
+            {
+              "name": "select",
+              "value": "booking_id,flight_id,passenger_id"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e4471629-e070-41e4-b044-2d7be0f19e40",
+      "name": "Get Confirmed Bookings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        752,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/passenger",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "passenger_id",
+              "value": "={{ 'eq.' + $json.passenger_id }}"
+            },
+            {
+              "name": "select",
+              "value": "passenger_id,full_name,email"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8dc0e0c6-fd4f-4109-988c-692568005d12",
+      "name": "Get Passenger",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1008,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const passenger = $json;\nconst booking = $('Get Confirmed Bookings').item.json;\nconst flight = $('Get Updated Flight').item.json;\nconst audit = $('Get Unprocessed Schedule Changes').item.json;\n\nconst oldDeparture = audit.old_data?.departure_time || 'Unknown';\nconst oldArrival = audit.old_data?.arrival_time || 'Unknown';\nconst newDeparture = audit.new_data?.departure_time || flight.departure_time || 'Unknown';\nconst newArrival = audit.new_data?.arrival_time || flight.arrival_time || 'Unknown';\n\nreturn [{\n  json: {\n    audit_id: audit.audit_id,\n    booking_id: booking.booking_id,\n    flight_id: flight.flight_id,\n    passenger_id: passenger.passenger_id,\n    passenger_name: passenger.full_name,\n    passenger_email: passenger.email,\n    flight_number: flight.flight_number,\n    origin: flight.origin,\n    destination: flight.destination,\n    old_departure_time: oldDeparture,\n    old_arrival_time: oldArrival,\n    new_departure_time: newDeparture,\n    new_arrival_time: newArrival\n  }\n}];"
+      },
+      "id": "4accdd26-cf00-4840-a482-6332fce6ac38",
+      "name": "Prepare Schedule Change Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.passenger_email }}",
+        "subject": "=Flight Schedule Changed - {{ $json.flight_number }}",
+        "message": "=Hello {{ $json.passenger_name }},\\n\\nThe schedule for your flight {{ $json.flight_number }} from {{ $json.origin }} to {{ $json.destination }} has changed.\\n\\nPrevious departure: {{ $json.old_departure_time }}\\nNew departure: {{ $json.new_departure_time }}\\n\\nPrevious arrival: {{ $json.old_arrival_time }}\\nNew arrival: {{ $json.new_arrival_time }}\\n\\nBooking ID: {{ $json.booking_id }}\\n\\nPlease review the updated schedule before travel.\\n\\nFlight Management System",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "0a6e93d0-6239-455f-8b95-843b6e4ff55c",
+      "name": "Send Schedule Change Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1504,
+        560
+      ],
+      "webhookId": "df115847-8006-42a9-a611-44946961cc1a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mUo1iQT8HszcVinP",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/audit_logs",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "audit_id",
+              "value": "={{ 'eq.' + $('Prepare Schedule Change Email').item.json.audit_id }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ processed_at: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "73ce8361-7b9f-4d44-aa46-0dd6bceeeff1",
+      "name": "Mark Audit Processed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        560
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 5 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Get Unprocessed Schedule Changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Unprocessed Schedule Changes": {
+      "main": [
+        [
+          {
+            "node": "Get Updated Flight",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Updated Flight": {
+      "main": [
+        [
+          {
+            "node": "Get Confirmed Bookings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Confirmed Bookings": {
+      "main": [
+        [
+          {
+            "node": "Get Passenger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Passenger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Schedule Change Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Schedule Change Email": {
+      "main": [
+        [
+          {
+            "node": "Send Schedule Change Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Schedule Change Email": {
+      "main": [
+        [
+          {
+            "node": "Mark Audit Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "457e673c-7481-48ca-9a8b-7160043ac39c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b30f7931c3f23c168f69d8184362b541d863725a9b7527b32e63d62c0e9fc53b"
+  },
+  "nodeGroups": [],
+  "id": "cv93yTCoNedjSw7G",
+  "tags": []
+}

@@ -1,0 +1,472 @@
+{
+  "name": "Fraud Detection and Scoring",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "005a1226-0e16-492b-8ee0-a44ac56d23da",
+      "name": "Every 30 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "booking_status",
+              "value": "eq.confirmed"
+            },
+            {
+              "name": "select",
+              "value": "booking_id,flight_id,passenger_id,seat_class,fare_type,booking_status,total_amount,payment_status,created_at"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "51231dbd-6f9c-425b-9206-f8033244072a",
+      "name": "Get Confirmed Bookings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/fraud_assessments",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "booking_id",
+              "value": "={{ 'eq.' + $json.booking_id }}"
+            },
+            {
+              "name": "select",
+              "value": "fraud_assessment_id,booking_id"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "4b17f0c5-290a-4a73-90ee-e1ce87ff2049",
+      "name": "Check Existing Fraud Assessment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        512
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "da983f46-c4a0-4627-93ab-d2ad5ad799f4",
+              "leftValue": "={{ Array.isArray($json) ? $json.length : Object.keys($json || {}).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "49f5a3cc-cd2c-4131-bad8-21a02b213bee",
+      "name": "Unscored?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        720,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "booking_id",
+              "value": "={{ 'eq.' + $('Get Confirmed Bookings').first().json.booking_id }}"
+            },
+            {
+              "name": "select",
+              "value": "booking_id,flight_id,passenger_id,seat_class,fare_type,total_amount,payment_status,created_at"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "51ecef32-897c-4571-9e57-0d8468e74266",
+      "name": "Get Booking Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "passenger_id",
+              "value": "={{ 'eq.' + $('Get Confirmed Bookings').first().json.passenger_id }}"
+            },
+            {
+              "name": "created_at",
+              "value": "={{ 'gte.' + new Date(Date.now() - 24*60*60*1000).toISOString() }}"
+            },
+            {
+              "name": "select",
+              "value": "booking_id,total_amount,booking_status,payment_status,created_at"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "dc7c056e-0e77-4f1f-a6f9-4c4975ba72e8",
+      "name": "Get Passenger Recent Bookings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1104,
+        304
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const booking = $('Get Booking Details').first().json;\nconst recent = $('Get Passenger Recent Bookings').all().map(i => i.json);\n\nlet score = 0;\nconst reasons = [];\n\nconst amount = Number(booking.total_amount || 0);\nconst recentCount = recent.length;\nconst recentTotal = recent.reduce((sum, r) => sum + Number(r.total_amount || 0), 0);\n\nif (amount >= 100000) {\n  score += 35;\n  reasons.push('unusually high booking amount');\n} else if (amount >= 50000) {\n  score += 20;\n  reasons.push('high booking amount');\n}\n\nif (recentCount >= 5) {\n  score += 30;\n  reasons.push('multiple bookings within the last 24 hours');\n} else if (recentCount >= 3) {\n  score += 15;\n  reasons.push('elevated booking frequency within the last 24 hours');\n}\n\nif (recentTotal >= 200000) {\n  score += 25;\n  reasons.push('high cumulative booking value within the last 24 hours');\n}\n\nif (String(booking.payment_status).toLowerCase() !== 'paid') {\n  score += 20;\n  reasons.push('booking is not fully paid');\n}\n\nif (String(booking.fare_type).toLowerCase() === 'flexible' && amount >= 75000) {\n  score += 10;\n  reasons.push('high-value flexible fare booking');\n}\n\nscore = Math.min(score, 100);\n\nlet risk_level = 'low';\nif (score >= 70) risk_level = 'high';\nelse if (score >= 40) risk_level = 'medium';\n\nreturn [{\n  json: {\n    booking_id: booking.booking_id,\n    passenger_id: booking.passenger_id,\n    fraud_score: score,\n    risk_level,\n    risk_reasons: reasons,\n    review_status: risk_level === 'high' ? 'pending' : 'cleared'\n  }\n}];"
+      },
+      "id": "568a9a66-381d-45e8-b852-249f89966279",
+      "name": "Calculate Fraud Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/fraud_assessments",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ booking_id: $json.booking_id, passenger_id: $json.passenger_id, fraud_score: $json.fraud_score, risk_level: $json.risk_level, risk_reasons: $json.risk_reasons, review_status: $json.review_status }) }}",
+        "options": {}
+      },
+      "id": "79a5f752-0d70-4c44-82c5-9f584702cb59",
+      "name": "Save Fraud Assessment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1488,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b6c09cdd-3b11-4f6c-a42e-c25aaf2cb7d2",
+              "leftValue": "={{ $('Calculate Fraud Score').item.json.risk_level }}",
+              "rightValue": "high",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0279bb90-f935-412f-a2bd-a6ea5cdebc0e",
+      "name": "High Risk?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1792,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "hassamali3255397@gmail.com",
+        "subject": "=High-Risk Booking Alert - Booking {{ $('Calculate Fraud Score').item.json.booking_id }}",
+        "message": "=A booking has been flagged as HIGH RISK.\\n\\nBooking ID: {{ $('Calculate Fraud Score').item.json.booking_id }}\\nPassenger ID: {{ $('Calculate Fraud Score').item.json.passenger_id }}\\nFraud Score: {{ $('Calculate Fraud Score').item.json.fraud_score }}/100\\nRisk Level: {{ $('Calculate Fraud Score').item.json.risk_level }}\\nReasons: {{ JSON.stringify($('Calculate Fraud Score').item.json.risk_reasons) }}\\n\\nPlease review this booking in the fraud_assessments table.",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "06c92a49-0ff0-4c98-8976-c8e1052fab5e",
+      "name": "Send High Risk Alert",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2064,
+        560
+      ],
+      "webhookId": "59190635-0082-43dc-b3b4-ce16651d4651",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mUo1iQT8HszcVinP",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 30 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Get Confirmed Bookings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Confirmed Bookings": {
+      "main": [
+        [
+          {
+            "node": "Check Existing Fraud Assessment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Existing Fraud Assessment": {
+      "main": [
+        [
+          {
+            "node": "Unscored?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unscored?": {
+      "main": [
+        [
+          {
+            "node": "Get Booking Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Booking Details": {
+      "main": [
+        [
+          {
+            "node": "Get Passenger Recent Bookings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Passenger Recent Bookings": {
+      "main": [
+        [
+          {
+            "node": "Calculate Fraud Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Fraud Score": {
+      "main": [
+        [
+          {
+            "node": "Save Fraud Assessment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Fraud Assessment": {
+      "main": [
+        [
+          {
+            "node": "High Risk?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "High Risk?": {
+      "main": [
+        [
+          {
+            "node": "Send High Risk Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "77472c24-a9e8-4533-affb-a3d291d622ea",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b30f7931c3f23c168f69d8184362b541d863725a9b7527b32e63d62c0e9fc53b"
+  },
+  "nodeGroups": [],
+  "id": "9F4LdhVTZcM5c9PB",
+  "tags": []
+}

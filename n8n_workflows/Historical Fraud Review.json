@@ -1,0 +1,164 @@
+{
+  "name": "Historical Fraud Review",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "4a0eb63e-dc99-4df1-b0c2-3e417b0d7e74",
+      "name": "Every Monday 9 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/fraud_assessments",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "risk_level",
+              "value": "in.(medium,high)"
+            },
+            {
+              "name": "select",
+              "value": "fraud_assessment_id,booking_id,passenger_id,fraud_score,risk_level,risk_reasons,review_status,created_at"
+            },
+            {
+              "name": "order",
+              "value": "fraud_score.desc"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "48786bc2-c7be-4153-87d4-a393be85adea",
+      "name": "Get Medium and High Risk Cases",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        256,
+        432
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.all().map(i => i.json);\n\n// Remove empty placeholder items like {}\nconst cases = raw.filter(c =>\n  c &&\n  Object.keys(c).length > 0 &&\n  c.booking_id !== undefined\n);\n\nif (cases.length === 0) {\n  return [{\n    json: {\n      has_cases: false,\n      subject: 'Weekly Fraud Review - No Medium/High Risk Cases',\n      report:\n        'WEEKLY FRAUD REVIEW REPORT\\n\\n' +\n        'No medium or high-risk fraud assessments are currently available for review.'\n    }\n  }];\n}\n\nconst pending = cases.filter(c => c.review_status === 'pending');\nconst high = cases.filter(c => c.risk_level === 'high');\nconst medium = cases.filter(c => c.risk_level === 'medium');\n\nlet report = `WEEKLY FRAUD REVIEW REPORT\\n\\n`;\nreport += `Total cases: ${cases.length}\\n`;\nreport += `High risk: ${high.length}\\n`;\nreport += `Medium risk: ${medium.length}\\n`;\nreport += `Pending human review: ${pending.length}\\n\\n`;\nreport += `----------------------------------------\\n`;\n\nfor (const c of cases) {\n  const reasons = Array.isArray(c.risk_reasons)\n    ? c.risk_reasons.join(', ')\n    : String(c.risk_reasons || 'No reasons recorded');\n\n  report += `\\nBooking #${c.booking_id}\\n`;\n  report += `Passenger ID: ${c.passenger_id}\\n`;\n  report += `Fraud Score: ${c.fraud_score}/100\\n`;\n  report += `Risk Level: ${String(c.risk_level).toUpperCase()}\\n`;\n  report += `Reasons: ${reasons}\\n`;\n  report += `Review Status: ${c.review_status}\\n`;\n  report += `Assessed At: ${c.created_at}\\n`;\n  report += `----------------------------------------\\n`;\n}\n\nreturn [{\n  json: {\n    has_cases: true,\n    subject: `Weekly Fraud Review - ${high.length} High / ${medium.length} Medium Risk`,\n    report\n  }\n}];"
+      },
+      "id": "f57aed88-62e9-45f8-b9f8-4df3c25b142a",
+      "name": "Build Historical Fraud Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "hassamali3255397@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.report }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "6e830c6e-30d4-4a7d-9e80-9bfc14bc736d",
+      "name": "Send Fraud Review Report",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        784,
+        432
+      ],
+      "webhookId": "d4fa0bc1-dd98-4423-82d9-1169c9fcf96e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mUo1iQT8HszcVinP",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every Monday 9 AM": {
+      "main": [
+        [
+          {
+            "node": "Get Medium and High Risk Cases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Medium and High Risk Cases": {
+      "main": [
+        [
+          {
+            "node": "Build Historical Fraud Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Historical Fraud Report": {
+      "main": [
+        [
+          {
+            "node": "Send Fraud Review Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "3e080d80-f324-4fdf-af0e-566c485d88b8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b30f7931c3f23c168f69d8184362b541d863725a9b7527b32e63d62c0e9fc53b"
+  },
+  "nodeGroups": [],
+  "id": "qsEK3YE994t4OIhF",
+  "tags": []
+}

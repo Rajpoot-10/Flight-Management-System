@@ -1,0 +1,478 @@
+{
+  "name": "Flight Cancellation Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "id": "3ab1fb8d-9d38-4f7d-a9f4-e5c5a0b075ec",
+      "name": "Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/audit_logs",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "eq.flight_cancelled"
+            },
+            {
+              "name": "processed_at",
+              "value": "is.null"
+            },
+            {
+              "name": "select",
+              "value": "audit_id,entity_id,new_data,created_at"
+            },
+            {
+              "name": "order",
+              "value": "created_at.asc"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2388bdfb-7aa7-4bcc-85ae-7e9e354a8141",
+      "name": "Get Unprocessed Flight Cancellation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        256,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/flights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "flight_id",
+              "value": "={{ 'eq.' + $json.entity_id }}"
+            },
+            {
+              "name": "select",
+              "value": "flight_id,flight_number,origin,destination,departure_time,arrival_time,flight_status"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "98ebba92-b885-4cc5-970e-2dcfe899d878",
+      "name": "Get Cancelled Flight",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        512,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "flight_id",
+              "value": "={{ 'eq.' + $json.flight_id }}"
+            },
+            {
+              "name": "booking_status",
+              "value": "eq.cancelled"
+            },
+            {
+              "name": "select",
+              "value": "booking_id,flight_id,passenger_id,total_amount,booking_status"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0407fc43-467d-4cad-b419-870e17e2609f",
+      "name": "Get Cancelled Bookings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        752,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/passenger",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "passenger_id",
+              "value": "={{ 'eq.' + $json.passenger_id }}"
+            },
+            {
+              "name": "select",
+              "value": "passenger_id,full_name,email"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6eb2d8b0-3959-4236-8505-92bd39bb6a92",
+      "name": "Get Passenger",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1008,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/refunds",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "booking_id",
+              "value": "={{ 'eq.' + $('Get Cancelled Bookings').item.json.booking_id }}"
+            },
+            {
+              "name": "refund_type",
+              "value": "eq.airline_cancellation"
+            },
+            {
+              "name": "select",
+              "value": "refund_id,booking_id,refund_amount,refund_status,reason,requested_at"
+            },
+            {
+              "name": "order",
+              "value": "requested_at.desc"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ff07fc7b-e857-47ac-81e1-95684e188f97",
+      "name": "Get Refund",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1264,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const refund = $json;\nconst booking = $('Get Cancelled Bookings').item.json;\nconst passenger = $('Get Passenger').item.json;\nconst flight = $('Get Cancelled Flight').first().json;\nconst audit = $('Get Unprocessed Flight Cancellation').first().json;\n\nconst reason =\n  audit.new_data?.reason ||\n  refund.reason ||\n  'Flight cancelled by airline';\n\nreturn [{\n  json: {\n    audit_id: audit.audit_id,\n    booking_id: booking.booking_id,\n    passenger_id: passenger.passenger_id,\n    passenger_name: passenger.full_name,\n    passenger_email: passenger.email,\n    flight_id: flight.flight_id,\n    flight_number: flight.flight_number,\n    origin: flight.origin,\n    destination: flight.destination,\n    departure_time: flight.departure_time,\n    refund_amount: Number(refund.refund_amount || booking.total_amount || 0),\n    refund_status: refund.refund_status || 'pending',\n    cancellation_reason: reason\n  }\n}];"
+      },
+      "id": "2f448d92-a1dd-49eb-92e2-d8ee34d758a9",
+      "name": "Prepare Cancellation Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.passenger_email }}",
+        "subject": "=Flight Cancelled - {{ $json.flight_number }}",
+        "message": "=Hello {{ $json.passenger_name }},\\n\\nWe are sorry to inform you that flight {{ $json.flight_number }} from {{ $json.origin }} to {{ $json.destination }} has been cancelled by the airline.\\n\\nReason: {{ $json.cancellation_reason }}\\n\\nBooking ID: {{ $json.booking_id }}\\nRefund amount: PKR {{ $json.refund_amount }}\\nRefund status: {{ $json.refund_status }}\\n\\nYour booking has been cancelled and the refund process has been initiated.\\n\\nFlight Management System",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "c0aa6eaf-1b4e-4bdb-8f37-e045c0ef9802",
+      "name": "Send Cancellation Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1760,
+        480
+      ],
+      "webhookId": "350187cc-2228-4617-8ecd-ee79789a1da4",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mUo1iQT8HszcVinP",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/audit_logs",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "audit_id",
+              "value": "={{ 'eq.' + $('Prepare Cancellation Email').first().json.audit_id }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ processed_at: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "dc3ab919-ee47-4504-9734-049e1311ee24",
+      "name": "Mark Cancellation Audit Processed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2032,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Flight Cancellation Notification\\n\\nPurpose: notify passengers after an airline-initiated whole-flight cancellation.\\n\\n### Before activation\\n1. `audit_logs.processed_at` must already exist.\\n2. Replace `SET_SUPABASE_KEY_HERE` using your existing secure Supabase credential/header setup.\\n3. Connect your airline/system Gmail credential.\\n4. Test on a cancelled flight with cancelled bookings and `airline_cancellation` refund rows.\\n5. Keep workflow inactive until one manual execution succeeds.\\n\\n### Data used in the email\\n- flight number and route\\n- cancellation reason from audit/refund data\\n- booking ID\\n- refund amount\\n- refund status\\n\\nNo secrets are included in this JSON.",
+        "height": 500,
+        "width": 630
+      },
+      "id": "37efb5d9-ad95-4529-bbd8-4998a9c22ef8",
+      "name": "Setup Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 5 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Get Unprocessed Flight Cancellation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Unprocessed Flight Cancellation": {
+      "main": [
+        [
+          {
+            "node": "Get Cancelled Flight",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Cancelled Flight": {
+      "main": [
+        [
+          {
+            "node": "Get Cancelled Bookings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Cancelled Bookings": {
+      "main": [
+        [
+          {
+            "node": "Get Passenger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Passenger": {
+      "main": [
+        [
+          {
+            "node": "Get Refund",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Refund": {
+      "main": [
+        [
+          {
+            "node": "Prepare Cancellation Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Cancellation Email": {
+      "main": [
+        [
+          {
+            "node": "Send Cancellation Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Cancellation Email": {
+      "main": [
+        [
+          {
+            "node": "Mark Cancellation Audit Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "72f3b4df-fab4-48f1-8f7a-2468a82b6860",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b30f7931c3f23c168f69d8184362b541d863725a9b7527b32e63d62c0e9fc53b"
+  },
+  "nodeGroups": [],
+  "id": "5a09vrKaq4Rhb8bJ",
+  "tags": []
+}

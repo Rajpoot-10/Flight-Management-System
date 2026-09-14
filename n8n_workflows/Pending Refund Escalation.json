@@ -1,0 +1,451 @@
+{
+  "name": "Pending Refund Escalation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "729407f1-b7cf-4c84-a37f-988fdf7d3e18",
+      "name": "Every Day 9 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/refunds",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "refund_status",
+              "value": "eq.pending"
+            },
+            {
+              "name": "requested_at",
+              "value": "={{ 'lte.' + new Date(Date.now() - 3*24*60*60*1000).toISOString() }}"
+            },
+            {
+              "name": "select",
+              "value": "refund_id,booking_id,passenger_id,refund_type,refund_amount,refund_status,reason,requested_at"
+            },
+            {
+              "name": "order",
+              "value": "requested_at.asc"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "90d02cee-ea5e-42db-8702-d39146df6151",
+      "name": "Get Pending Refunds Older Than 3 Days",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        272,
+        608
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/audit_logs",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "eq.refund_escalated"
+            },
+            {
+              "name": "entity_type",
+              "value": "eq.refund"
+            },
+            {
+              "name": "entity_id",
+              "value": "={{ 'eq.' + $json.refund_id }}"
+            },
+            {
+              "name": "select",
+              "value": "audit_id,entity_id"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "8adfa0ad-a054-4cf5-bd03-f3127b8b2b2c",
+      "name": "Check Existing Escalation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        528,
+        608
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2e814ba4-0050-47a0-9a7e-1217f8de7488",
+              "leftValue": "={{ Object.keys($json || {}).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "eeb8664a-8a54-4d79-adfe-c40bf29d948f",
+      "name": "Not Escalated Yet?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        784,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "booking_id",
+              "value": "={{ 'eq.' + $('Get Pending Refunds Older Than 3 Days').item.json.booking_id }}"
+            },
+            {
+              "name": "select",
+              "value": "booking_id,flight_id,passenger_id,seat_class,fare_type,booking_status,total_amount"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "591a49fe-d3ec-421f-a35b-af0b3d248adc",
+      "name": "Get Booking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1024,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/passenger",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "passenger_id",
+              "value": "={{ 'eq.' + $('Get Pending Refunds Older Than 3 Days').item.json.passenger_id }}"
+            },
+            {
+              "name": "select",
+              "value": "passenger_id,full_name,email"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "13c41fe8-295d-4c2a-8cc6-0e8f4c20e93c",
+      "name": "Get Passenger",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1280,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const refund = $('Get Pending Refunds Older Than 3 Days').item.json;\nconst booking = $('Get Booking').item.json;\nconst passenger = $json;\n\nconst requestedAt = new Date(refund.requested_at);\nconst now = new Date();\nconst pendingDays = Math.max(\n  0,\n  Math.floor((now - requestedAt) / (24 * 60 * 60 * 1000))\n);\n\nreturn [{\n  json: {\n    refund_id: refund.refund_id,\n    booking_id: refund.booking_id,\n    passenger_id: refund.passenger_id,\n    passenger_name: passenger.full_name || 'Unknown',\n    passenger_email: passenger.email || 'Unknown',\n    flight_id: booking.flight_id,\n    refund_amount: Number(refund.refund_amount || 0),\n    refund_status: refund.refund_status,\n    refund_type: refund.refund_type,\n    reason: refund.reason || 'No reason recorded',\n    requested_at: refund.requested_at,\n    pending_days: pendingDays\n  }\n}];"
+      },
+      "id": "60965594-2dad-4ac4-a752-088914eff156",
+      "name": "Prepare Escalation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "hassamali3255397@gmail.com",
+        "subject": "=Refund Escalation - Booking {{ $json.booking_id }}",
+        "message": "=REFUND ESCALATION\\n\\nA refund has remained unresolved for at least 3 days.\\n\\nRefund ID: {{ $json.refund_id }}\\nBooking ID: {{ $json.booking_id }}\\nPassenger: {{ $json.passenger_name }}\\nPassenger ID: {{ $json.passenger_id }}\\nPassenger Email: {{ $json.passenger_email }}\\nFlight ID: {{ $json.flight_id }}\\nRefund Amount: PKR {{ $json.refund_amount }}\\nRefund Status: {{ $json.refund_status }}\\nRefund Type: {{ $json.refund_type }}\\nPending Days: {{ $json.pending_days }}\\nRequested At: {{ $json.requested_at }}\\nReason: {{ $json.reason }}\\n\\nAction Required: Please review and resolve this refund.",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "6abe894a-5059-4264-aa91-2e2ac66c97a1",
+      "name": "Send Escalation Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1792,
+        528
+      ],
+      "webhookId": "1dd711a3-7729-4c54-bd1d-28d53ff0c3f2",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mUo1iQT8HszcVinP",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://tzrruikgdomkqijawsog.supabase.co/rest/v1/audit_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cnJ1aWtnZG9ta3FpamF3c29nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODYzMDg2MiwiZXhwIjoyMTA0MjA2ODYyfQ.WA2eMPDZw3R41UG5WbvkDIeOnm5VflZRGuWV1nK2rV4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ actor_type: 'n8n', actor_id: 'refund-escalation', action: 'refund_escalated', entity_type: 'refund', entity_id: $('Prepare Escalation').item.json.refund_id, old_data: { refund_status: $('Prepare Escalation').item.json.refund_status, requested_at: $('Prepare Escalation').item.json.requested_at }, new_data: { escalated: true, pending_days: $('Prepare Escalation').item.json.pending_days, escalated_at: new Date().toISOString() }, created_at: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "0935fbd0-b6d2-478d-88ce-f3ee8c72c876",
+      "name": "Record Escalation Audit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2048,
+        528
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every Day 9 AM": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Refunds Older Than 3 Days",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Refunds Older Than 3 Days": {
+      "main": [
+        [
+          {
+            "node": "Check Existing Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Existing Escalation": {
+      "main": [
+        [
+          {
+            "node": "Not Escalated Yet?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Not Escalated Yet?": {
+      "main": [
+        [
+          {
+            "node": "Get Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Booking": {
+      "main": [
+        [
+          {
+            "node": "Get Passenger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Passenger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Escalation": {
+      "main": [
+        [
+          {
+            "node": "Send Escalation Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Escalation Email": {
+      "main": [
+        [
+          {
+            "node": "Record Escalation Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b8cd2ed1-8961-42d1-9d03-cf077fdeefae",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b30f7931c3f23c168f69d8184362b541d863725a9b7527b32e63d62c0e9fc53b"
+  },
+  "nodeGroups": [],
+  "id": "wClzcbAyWAdfhx0O",
+  "tags": []
+}
