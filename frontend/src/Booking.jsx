@@ -53,6 +53,10 @@ function Booking() {
       setCancelResult(data);
 
     } catch (error) {
+      if (error.status === 401) {
+        navigate("/login", { replace: true, state: { from: location } });
+        return;
+      }
       setBookingError(error.message);
     } finally {
       setCancellingBooking(false);
@@ -119,6 +123,10 @@ function Booking() {
       navigate("/manage-booking");
 
     } catch (error) {
+      if (error.status === 401) {
+        navigate("/login", { replace: true, state: { from: location } });
+        return;
+      }
       setBookingError(error.message);
     } finally {
       setConfirmingBooking(false);
@@ -196,6 +204,10 @@ function Booking() {
       setSeatHolds(holdRecords);
 
     } catch (error) {
+      if (error.status === 401) {
+        navigate("/login", { replace: true, state: { from: location } });
+        return;
+      }
       setBookingError(error.message);
     } finally {
       setProcessingBooking(false);
@@ -284,6 +296,10 @@ function Booking() {
       setAvailableSeats(Array.isArray(data) ? data : []);
       setShowSeats(true);
     } catch (error) {
+      if (error.status === 401) {
+        navigate("/login", { replace: true, state: { from: location } });
+        return;
+      }
       setSeatError(error.message || "Failed to load available seats");
     } finally {
       setSeatLoading(false);

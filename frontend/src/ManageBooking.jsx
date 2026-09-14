@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, Plane, XCircle } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { apiFetch } from "./api";
 import { confirmAction, showError, showSuccess } from "./dialogs";
 import "./Operations.css";
 
 function ManageBooking() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [records, setRecords] = useState([]);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
@@ -17,12 +18,16 @@ function ManageBooking() {
             setLoading(true); setError("");
             setRecords(await apiFetch("/me/bookings"));
         } catch (requestError) {
+            if (requestError.status === 401) {
+                navigate("/login", { replace: true, state: { from: location } });
+                return;
+            }
             setError(requestError.message || "Unable to load your bookings.");
         }
         finally { setLoading(false); }
     };
 
-    useEffect(() => { loadBookings(); }, []);
+    useEffect(() => { loadBookings(); }, [location, navigate]);
 
     const cancel = async (bookingId) => {
         const confirmation = await confirmAction(
@@ -34,7 +39,14 @@ function ManageBooking() {
             await apiFetch(`/bookings/${bookingId}/cancel`, { method: "POST" });
             await loadBookings();
             await showSuccess("Booking cancelled", "Your refund details are now available below.");
-        } catch (requestError) { setError(requestError.message); await showError(requestError.message); }
+        } catch (requestError) {
+            if (requestError.status === 401) {
+                navigate("/login", { replace: true, state: { from: location } });
+                return;
+            }
+            setError(requestError.message);
+            await showError(requestError.message);
+        }
         finally { setCancelling(false); }
     };
 

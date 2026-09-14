@@ -62,20 +62,6 @@ def get_current_user(
     return user
 
 
-def get_optional_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
-):
-    if not credentials:
-        return None
-    try:
-        response = supabase.auth.get_user(credentials.credentials)
-        return response.user
-    except Exception:
-        # Passenger creation remains compatible with the pre-auth booking flow.
-        # Protected endpoints continue to use get_current_user and reject it.
-        return None
-
-
 def require_admin(current_user=Depends(get_current_user)):
     try:
         profile_response = (
@@ -317,7 +303,7 @@ def search_flights(
 @app.post("/passenger")
 def create_passenger(
     passenger: PassengerCreate,
-    current_user=Depends(get_optional_user),
+    current_user=Depends(get_current_user),
 ):
 
     passenger_data = {
@@ -327,8 +313,7 @@ def create_passenger(
         "passport_number": passenger.passport_number,
         "nationality": passenger.nationality,
     }
-    if current_user:
-        passenger_data["auth_user_id"] = current_user.id
+    passenger_data["auth_user_id"] = current_user.id
 
     response = (
         supabase
@@ -446,7 +431,16 @@ def generate_seats(flight_id: int, _current_user=Depends(require_admin)):
 # create seat holds
 
 @app.post("/seat-holds")
-def create_seat_hold(hold: SeatHoldCreate):
+def create_seat_hold(hold: SeatHoldCreate, current_user=Depends(get_current_user)):
+    passenger_response = (
+        supabase.table("passenger")
+        .select("passenger_id")
+        .eq("passenger_id", hold.passenger_id)
+        .eq("auth_user_id", current_user.id)
+        .execute()
+    )
+    if not passenger_response.data:
+        raise HTTPException(status_code=404, detail="Passenger not found")
 
     # 1. Check flight exists
     flight_response = (
@@ -576,8 +570,29 @@ def create_seat_hold(hold: SeatHoldCreate):
 
 # for bookings
 @app.post("/bookings")
-def create_booking(data: BookingCreate):
+def create_booking(data: BookingCreate, current_user=Depends(get_current_user)):
     try:
+        hold_response = (
+            supabase.table("seat_holds")
+            .select("passenger_id")
+            .eq("hold_id", data.hold_id)
+            .eq("hold_status", "active")
+            .execute()
+        )
+        hold = (hold_response.data or [None])[0]
+        if not hold:
+            raise HTTPException(status_code=404, detail="Seat hold not found")
+
+        passenger_response = (
+            supabase.table("passenger")
+            .select("passenger_id")
+            .eq("passenger_id", hold["passenger_id"])
+            .eq("auth_user_id", current_user.id)
+            .execute()
+        )
+        if not passenger_response.data:
+            raise HTTPException(status_code=404, detail="Seat hold not found")
+
         result = supabase.rpc(
             "confirm_booking",
             {
@@ -591,6 +606,8 @@ def create_booking(data: BookingCreate):
 
         return result.data
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -750,7 +767,7 @@ def get_booking(booking_id: int, current_user=Depends(get_current_user)):
 
 
 @app.post("/waitlist")
-def join_waitlist(waitlist: WaitlistCreate):
+def join_waitlist(waitlist: WaitlistCreate, current_user=Depends(get_current_user)):
 
     # 1. Check flight exists
     flight_response = (
@@ -786,6 +803,7 @@ def join_waitlist(waitlist: WaitlistCreate):
         .table("passenger")
         .select("*")
         .eq("passenger_id", waitlist.passenger_id)
+        .eq("auth_user_id", current_user.id)
         .execute()
     )
 
@@ -863,7 +881,7 @@ def join_waitlist(waitlist: WaitlistCreate):
 
 
 @app.get("/waitlist/{waitlist_id}")
-def get_waitlist_status(waitlist_id: int):
+def get_waitlist_status(waitlist_id: int, current_user=Depends(get_current_user)):
     response = (
         supabase
         .table("waitlist")
@@ -876,6 +894,15 @@ def get_waitlist_status(waitlist_id: int):
         raise HTTPException(status_code=404, detail="Waitlist entry not found")
 
     entry = response.data[0]
+    passenger_response = (
+        supabase.table("passenger")
+        .select("passenger_id")
+        .eq("passenger_id", entry["passenger_id"])
+        .eq("auth_user_id", current_user.id)
+        .execute()
+    )
+    if not passenger_response.data:
+        raise HTTPException(status_code=404, detail="Waitlist entry not found")
     flight_response = (
         supabase
         .table("flights")
@@ -969,8 +996,30 @@ def promote_waitlist(
 
 # if booking becomes avaible then claim
 @app.post("/waitlist/{waitlist_id}/claim")
-def claim_waitlist_offer(waitlist_id: int):
+def claim_waitlist_offer(waitlist_id: int, current_user=Depends(get_current_user)):
     try:
+        waitlist_response = (
+            supabase.table("waitlist")
+            .select("passenger_id")
+            .eq("waitlist_id", waitlist_id)
+            .execute()
+        )
+        entry = (waitlist_response.data or [None])[0]
+        if not entry:
+            raise HTTPException(
+                status_code=404, detail="Waitlist entry not found")
+
+        passenger_response = (
+            supabase.table("passenger")
+            .select("passenger_id")
+            .eq("passenger_id", entry["passenger_id"])
+            .eq("auth_user_id", current_user.id)
+            .execute()
+        )
+        if not passenger_response.data:
+            raise HTTPException(
+                status_code=404, detail="Waitlist entry not found")
+
         result = supabase.rpc(
             "claim_waitlist_offer",
             {
@@ -980,6 +1029,8 @@ def claim_waitlist_offer(waitlist_id: int):
 
         return result.data
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -987,13 +1038,14 @@ def claim_waitlist_offer(waitlist_id: int):
 
 
 @app.post("/price-alerts")
-def create_price_alert(data: PriceAlertCreate):
+def create_price_alert(data: PriceAlertCreate, current_user=Depends(get_current_user)):
     try:
         # Validate passenger
         passenger = (
             supabase.table("passenger")
             .select("passenger_id")
             .eq("passenger_id", data.passenger_id)
+            .eq("auth_user_id", current_user.id)
             .execute()
         )
 

@@ -24,7 +24,7 @@ createRoot(document.getElementById("root")).render(
       <AuthProvider>
         <Routes>
           <Route path="/" element={<App />} />
-          <Route path="/booking" element={<Booking />} />
+          <Route path="/booking" element={<AuthenticatedRoute><Booking /></AuthenticatedRoute>} />
           <Route path="/manage-booking" element={<AuthenticatedRoute><ManageBooking /></AuthenticatedRoute>} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />

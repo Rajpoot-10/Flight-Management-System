@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, Bell, ChevronDown, Plane, UserPlus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { apiFetch } from "./api";
+import { useAuth } from "./AuthContext";
 import "./Operations.css";
 
 const initial = { flight_id: "", full_name: "", email: "", phone: "", passport_number: "", nationality: "", seat_class: "economy", fare_type: "flexible", target_price: "" };
@@ -25,6 +26,8 @@ function ServiceDropdown({ value, options, onChange }) {
 
 function ServiceDesk() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const { user } = useAuth();
     const [form, setForm] = useState(initial);
     const [message, setMessage] = useState("");
     const [error, setError] = useState("");
@@ -34,9 +37,15 @@ function ServiceDesk() {
     const [claimId, setClaimId] = useState("");
 
     const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+    const requireAuth = () => {
+        if (user) return true;
+        navigate("/login", { state: { from: location } });
+        return false;
+    };
     const passenger = async () => apiFetch("/passenger", { method: "POST", body: JSON.stringify({ full_name: form.full_name, email: form.email, phone: form.phone, passport_number: form.passport_number, nationality: form.nationality }) });
     const join = async (event) => {
         event.preventDefault();
+        if (!requireAuth()) return;
         try {
             if (!Number(form.flight_id)) throw new Error("Enter a valid flight ID.");
             setLoading(true);
@@ -49,6 +58,10 @@ function ServiceDesk() {
             setClaimId(String(result.waitlist?.waitlist_id || ""));
             setMessage("You are on the waitlist.");
         } catch (e) {
+            if (e.status === 401) {
+                navigate("/login", { replace: true, state: { from: location } });
+                return;
+            }
             setError(e.message);
         } finally {
             setLoading(false);
@@ -56,6 +69,7 @@ function ServiceDesk() {
     };
     const alert = async (event) => {
         event.preventDefault();
+        if (!requireAuth()) return;
         try {
             const targetPrice = Number(form.target_price);
             if (!Number.isFinite(targetPrice) || targetPrice <= 0) {
@@ -69,12 +83,17 @@ function ServiceDesk() {
             await apiFetch("/price-alerts", { method: "POST", body: JSON.stringify({ flight_id: Number(form.flight_id), passenger_id: id, seat_class: form.seat_class, target_price: targetPrice }) });
             setMessage("Price alert created successfully. We'll notify you when the fare reaches your target.");
         } catch (e) {
+            if (e.status === 401) {
+                navigate("/login", { replace: true, state: { from: location } });
+                return;
+            }
             setError(e.message);
         } finally {
             setLoading(false);
         }
     };
     const claim = async () => {
+        if (!requireAuth()) return;
         try {
             if (!Number(claimId)) throw new Error("Enter a valid waitlist ID.");
             setLoading(true);
@@ -83,6 +102,10 @@ function ServiceDesk() {
             await refreshStatus(claimId);
             setMessage("Waitlist offer claimed.");
         } catch (e) {
+            if (e.status === 401) {
+                navigate("/login", { replace: true, state: { from: location } });
+                return;
+            }
             setError(e.message);
         } finally {
             setLoading(false);
@@ -90,9 +113,16 @@ function ServiceDesk() {
     };
 
     const refreshStatus = async (waitlistId) => {
-        const result = await apiFetch(`/waitlist/${waitlistId}`);
-        setWaitlist(result.waitlist);
-        setWaitlistFlight(result.flight || null);
+        try {
+            const result = await apiFetch(`/waitlist/${waitlistId}`);
+            setWaitlist(result.waitlist);
+            setWaitlistFlight(result.flight || null);
+        } catch (error) {
+            if (error.status === 401) {
+                navigate("/login", { replace: true, state: { from: location } });
+            }
+            throw error;
+        }
     };
 
     useEffect(() => {

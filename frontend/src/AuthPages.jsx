@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, LockKeyhole, Plane } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import "./AuthPages.css";
@@ -23,6 +23,7 @@ function AuthShell({ eyebrow, title, description, children }) {
 
 export function Login() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { signIn } = useAuth();
     const [form, setForm] = useState({ email: "", password: "" });
     const [error, setError] = useState("");
@@ -34,7 +35,7 @@ export function Login() {
         setLoading(true);
         try {
             await signIn(form.email.trim(), form.password);
-            navigate("/", { replace: true });
+            navigate(location.state?.from || "/", { replace: true });
         } catch (err) {
             setError(err.message || "Unable to sign in.");
         } finally {
@@ -50,13 +51,14 @@ export function Login() {
                 {error && <div className="auth-error">{error}</div>}
                 <button className="auth-submit" disabled={loading}>{loading ? "Signing in..." : "Sign in"}</button>
             </form>
-            <p className="auth-switch">New to AeroFlow? <Link to="/signup">Create an account</Link></p>
+            <p className="auth-switch">New to AeroFlow? <Link to="/signup" state={{ from: location.state?.from }}>Create an account</Link></p>
         </AuthShell>
     );
 }
 
 export function Signup() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { signUp } = useAuth();
     const [form, setForm] = useState({ fullName: "", email: "", password: "", confirmPassword: "" });
     const [error, setError] = useState("");
@@ -79,7 +81,7 @@ export function Signup() {
         setLoading(true);
         try {
             const data = await signUp(form.fullName.trim(), form.email.trim(), form.password);
-            if (data.session) navigate("/", { replace: true });
+            if (data.session) navigate(location.state?.from || "/", { replace: true });
             else setMessage("Account created. Please verify your email before signing in.");
         } catch (err) {
             setError(err.message || "Unable to create your account.");
@@ -99,7 +101,7 @@ export function Signup() {
                 {message && <div className="auth-success">{message}</div>}
                 <button className="auth-submit" disabled={loading}>{loading ? "Creating account..." : "Create account"}</button>
             </form>
-            <p className="auth-switch">Already registered? <Link to="/login">Sign in</Link></p>
+            <p className="auth-switch">Already registered? <Link to="/login" state={{ from: location.state?.from }}>Sign in</Link></p>
         </AuthShell>
     );
 }

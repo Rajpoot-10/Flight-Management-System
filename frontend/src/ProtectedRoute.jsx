@@ -10,7 +10,7 @@ export function AdminRoute({ children }) {
     const location = useLocation();
 
     if (loading) return <AuthLoading />;
-    if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
     if (role !== "admin") return <Navigate to="/" replace />;
 
     return children;
@@ -21,7 +21,7 @@ export function AuthenticatedRoute({ children }) {
     const location = useLocation();
 
     if (loading) return <AuthLoading />;
-    if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
 
     return children;
 }
