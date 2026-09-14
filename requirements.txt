@@ -4,3 +4,4 @@ python-dotenv==1.2.3
 supabase==2.31.0
 uvicorn[standard]
 email-validator
+httpx

@@ -1,3 +1,6 @@
+import os
+
+import httpx
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from datetime import date, datetime, time, timedelta, timezone
@@ -20,7 +23,8 @@ from schemas import (
     PassengerCreate,
     BookingCreate,
     WaitlistCreate,
-    PriceAlertCreate
+    PriceAlertCreate,
+    PolicyQuestionRequest,
 )
 
 app = FastAPI()
@@ -39,6 +43,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+N8N_POLICY_WEBHOOK_URL = os.getenv("N8N_POLICY_WEBHOOK_URL")
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -1402,3 +1408,70 @@ def get_available_seats(
             status_code=500,
             detail=str(e)
         )
+
+
+def extract_policy_answer(payload):
+    if isinstance(payload, dict):
+        for key in ("answer", "message", "output"):
+            value = payload.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        for value in payload.values():
+            answer = extract_policy_answer(value)
+            if answer:
+                return answer
+    elif isinstance(payload, list):
+        for item in payload:
+            answer = extract_policy_answer(item)
+            if answer:
+                return answer
+    return None
+
+
+@app.post("/policy-assistant")
+async def policy_assistant(payload: PolicyQuestionRequest):
+    if not N8N_POLICY_WEBHOOK_URL:
+        raise HTTPException(
+            status_code=500,
+            detail="Policy assistant integration is not configured."
+        )
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                N8N_POLICY_WEBHOOK_URL,
+                json={"question": payload.question},
+            )
+        response.raise_for_status()
+        try:
+            response_payload = response.json()
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=502,
+                detail="Policy assistant returned an invalid response.",
+            ) from exc
+
+        answer = extract_policy_answer(response_payload)
+        if not answer:
+            raise HTTPException(
+                status_code=502,
+                detail="Policy assistant returned no answer.",
+            )
+        return {"answer": answer}
+    except HTTPException:
+        raise
+    except httpx.TimeoutException as exc:
+        raise HTTPException(
+            status_code=504,
+            detail="The policy assistant took too long to respond. Please try again.",
+        ) from exc
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Policy assistant is temporarily unavailable.",
+        ) from exc
+    except httpx.RequestError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Policy assistant is temporarily unavailable.",
+        ) from exc

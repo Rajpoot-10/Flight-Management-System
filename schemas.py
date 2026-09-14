@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from pydantic import BaseModel, model_validator
 from pydantic import BaseModel
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, field_validator
 from datetime import datetime
 from pydantic import BaseModel, EmailStr
 from typing import Literal
@@ -70,6 +70,18 @@ class PassengerCreate(BaseModel):
     phone: str | None = None
     passport_number: str | None = None
     nationality: str | None = None
+
+
+class PolicyQuestionRequest(BaseModel):
+    question: str
+
+    @field_validator("question")
+    @classmethod
+    def validate_question(cls, value):
+        question = value.strip()
+        if not question:
+            raise ValueError("question cannot be empty")
+        return question
 
 
 class BookingCreate(BaseModel):
