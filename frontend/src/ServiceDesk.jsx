@@ -51,9 +51,48 @@ function ServiceDesk() {
     const [message, setMessage] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
-    const [waitlist, setWaitlist] = useState(null);
-    const [waitlistFlight, setWaitlistFlight] = useState(null);
-    const [claimId, setClaimId] = useState("");
+    const [waitlists, setWaitlists] = useState([]);
+    const [waitlistsLoading, setWaitlistsLoading] = useState(false);
+
+    const statusLabels = {
+        waiting: "Waiting",
+        offered: "Seat Available",
+        claimed: "Claimed",
+        expired: "Offer Expired",
+        cancelled: "Cancelled",
+    };
+
+    const loadWaitlists = async () => {
+        if (!user) {
+            setWaitlists([]);
+            return;
+        }
+
+        try {
+            setWaitlistsLoading(true);
+            const records = await apiFetch("/me/waitlists");
+            setWaitlists(Array.isArray(records) ? records : []);
+            setError("");
+        } catch (requestError) {
+            if (requestError.status === 401) {
+                navigate("/login", { replace: true, state: { from: location } });
+                return;
+            }
+            if (requestError.status === 403) {
+                setError("You do not have access to this waitlist.");
+            } else {
+                setError("Unable to load your waitlists right now.");
+            }
+        } finally {
+            setWaitlistsLoading(false);
+        }
+    };
+
+    const waitlistErrorMessage = (requestError) => {
+        if (requestError.status === 403) return "You do not have access to this waitlist.";
+        if (requestError.status === 500 || !requestError.status) return "Unable to load your waitlists right now.";
+        return requestError.message || "Unable to load your waitlists right now.";
+    };
 
     useEffect(() => {
         let active = true;
@@ -89,6 +128,10 @@ function ServiceDesk() {
         }));
     }, [profile?.full_name, user?.email]);
 
+    useEffect(() => {
+        loadWaitlists();
+    }, [user?.id]);
+
     const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
     const requireAuth = () => {
         if (user) return true;
@@ -105,10 +148,8 @@ function ServiceDesk() {
             setError("");
             const created = await passenger();
             const id = created.passenger_id || created.passenger?.passenger_id || created.data?.passenger_id;
-            const result = await apiFetch("/waitlist", { method: "POST", body: JSON.stringify({ flight_id: Number(form.flight_id), passenger_id: id, seat_class: form.seat_class, fare_type: form.fare_type }) });
-            setWaitlist(result.waitlist);
-            setWaitlistFlight(result.flight || null);
-            setClaimId(String(result.waitlist?.waitlist_id || ""));
+            await apiFetch("/waitlist", { method: "POST", body: JSON.stringify({ flight_id: Number(form.flight_id), passenger_id: id, seat_class: form.seat_class, fare_type: form.fare_type }) });
+            await loadWaitlists();
             setMessage("You are on the waitlist.");
         } catch (e) {
             if (e.status === 401) {
@@ -145,46 +186,34 @@ function ServiceDesk() {
             setLoading(false);
         }
     };
-    const claim = async () => {
+    const claim = async (waitlistId) => {
         if (!requireAuth()) return;
         try {
-            if (!Number(claimId)) throw new Error("Enter a valid waitlist ID.");
             setLoading(true);
             setError("");
-            await apiFetch(`/waitlist/${claimId}/claim`, { method: "POST" });
-            await refreshStatus(claimId);
+            await apiFetch(`/waitlist/${waitlistId}/claim`, { method: "POST" });
+            await loadWaitlists();
             setMessage("Waitlist offer claimed.");
         } catch (e) {
             if (e.status === 401) {
                 navigate("/login", { replace: true, state: { from: location } });
                 return;
             }
-            setError(e.message);
+            setError(waitlistErrorMessage(e));
         } finally {
             setLoading(false);
         }
     };
 
-    const refreshStatus = async (waitlistId) => {
-        try {
-            const result = await apiFetch(`/waitlist/${waitlistId}`);
-            setWaitlist(result.waitlist);
-            setWaitlistFlight(result.flight || null);
-        } catch (error) {
-            if (error.status === 401) {
-                navigate("/login", { replace: true, state: { from: location } });
-            }
-            throw error;
-        }
-    };
-
     useEffect(() => {
-        if (!waitlist?.waitlist_id || !["waiting", "offered"].includes(waitlist.waitlist_status)) return undefined;
+        if (!user || !waitlists.some(({ waitlist }) => ["waiting", "offered"].includes(waitlist.waitlist_status))) return undefined;
         const interval = window.setInterval(() => {
-            refreshStatus(waitlist.waitlist_id).catch(() => undefined);
+            loadWaitlists();
         }, 20000);
         return () => window.clearInterval(interval);
-    }, [waitlist?.waitlist_id, waitlist?.waitlist_status]);
+    }, [user?.id, waitlists]);
+
+    const formatWaitlistStatus = (status) => statusLabels[status] || status;
 
     return <div className="operations-page">
         <nav className="operations-nav"><strong onClick={() => navigate("/")}><Plane size={20} /> AeroFlow</strong><button className="ghost-button" onClick={() => navigate("/")}><ArrowLeft size={16} /> Flights</button></nav>
@@ -208,8 +237,24 @@ function ServiceDesk() {
                     <div className="admin-actions"><button className="primary-button" disabled={loading}><UserPlus size={16} /> Join waitlist</button><button type="button" className="secondary-button" disabled={loading || !form.target_price} onClick={alert}><Bell size={16} /> Track this price</button></div>
                 </form>
             </section>
-            {waitlist && <section className="operation-card waitlist-status-card"><span className="eyebrow">WAITLIST STATUS</span><h2>{waitlist.waitlist_status}</h2><p>{waitlist.waitlist_status === "waiting" && "You're currently on the waitlist."}{waitlist.waitlist_status === "offered" && "A seat is now available."}{waitlist.waitlist_status === "claimed" && "Your offer has been claimed."}{waitlist.waitlist_status === "expired" && "This offer has expired."}{waitlist.waitlist_status === "cancelled" && "Your waitlist entry was cancelled."}</p><div className="detail-grid"><div><small>Waitlist ID</small><strong>{waitlist.waitlist_id}</strong></div><div><small>Flight</small><strong>{waitlistFlight?.flight_number || "-"}</strong></div><div><small>Route</small><strong>{waitlistFlight ? `${waitlistFlight.origin} to ${waitlistFlight.destination}` : "-"}</strong></div><div><small>Cabin</small><strong>{waitlist.seat_class}</strong></div><div><small>Joined</small><strong>{waitlist.joined_at ? new Date(waitlist.joined_at).toLocaleString() : "-"}</strong></div>{waitlist.offer_expires_at && <div><small>Offer expires</small><strong>{new Date(waitlist.offer_expires_at).toLocaleString()}</strong></div>}</div>{waitlist.waitlist_status === "offered" && <button className="primary-button" onClick={claim} disabled={loading}>Claim offer</button>}</section>}
-            {!waitlist && <section className="operation-card"><h2>Check waitlist status</h2><div className="lookup-form"><input type="number" value={claimId} onChange={(e) => setClaimId(e.target.value)} placeholder="Waitlist ID" /><button className="primary-button" onClick={() => refreshStatus(claimId).catch((e) => setError(e.message))} disabled={!claimId || loading}>Check status</button></div></section>}
+            <section className="operation-card waitlists-section">
+                <div className="section-title"><div><span className="eyebrow">PASSENGER ACCOUNT</span><h2>My Waitlists</h2></div></div>
+                {waitlistsLoading && <p className="muted">Loading your waitlists...</p>}
+                {!waitlistsLoading && !user && <p className="muted">Sign in to view your waitlists.</p>}
+                {!waitlistsLoading && user && !waitlists.length && <p className="muted">No active waitlists.</p>}
+                {!waitlistsLoading && waitlists.map(({ waitlist, flight }) => (
+                    <article className="waitlist-entry" key={waitlist.waitlist_id}>
+                        <div className="detail-header"><div><span className="eyebrow">{flight?.flight_number || "Flight"}</span><h2>{flight ? `${flight.origin} → ${flight.destination}` : "Flight details unavailable"}</h2></div><span className={`status status-${waitlist.waitlist_status}`}>{formatWaitlistStatus(waitlist.waitlist_status)}</span></div>
+                        <div className="detail-grid">
+                            <div><small>Departure</small><strong>{flight?.departure_time ? new Date(flight.departure_time).toLocaleString() : "-"}</strong></div>
+                            <div><small>Cabin</small><strong>{waitlist.seat_class}</strong></div>
+                            <div><small>Joined</small><strong>{waitlist.joined_at ? new Date(waitlist.joined_at).toLocaleString() : "-"}</strong></div>
+                            {waitlist.offer_expires_at && <div><small>Offer expires</small><strong>{new Date(waitlist.offer_expires_at).toLocaleString()}</strong></div>}
+                        </div>
+                        {waitlist.waitlist_status === "offered" && new Date(waitlist.offer_expires_at) > new Date() && <button className="primary-button" onClick={() => claim(waitlist.waitlist_id)} disabled={loading}>Claim Offer</button>}
+                    </article>
+                ))}
+            </section>
         </main>
     </div>;
 }

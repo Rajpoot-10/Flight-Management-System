@@ -360,6 +360,22 @@
     box-shadow: 0 12px 40px rgba(16, 24, 40, .05);
 }
 
+.waitlists-section {
+    display: grid;
+    gap: 18px;
+}
+
+.waitlist-entry {
+    padding: 22px;
+    border: 1px solid #e7eaf0;
+    border-radius: 14px;
+    background: #fff;
+}
+
+.waitlist-entry .detail-grid {
+    margin: 22px 0;
+}
+
 .detail-header,
 .section-title {
     display: flex;
@@ -763,6 +779,10 @@
 
     .status {
         flex: 0 0 auto;
+    }
+
+    .waitlist-entry .primary-button {
+        width: 100%;
     }
 
     .service-card {

@@ -972,6 +972,52 @@ def get_waitlist_status(waitlist_id: int, current_user=Depends(get_current_user)
     }
 
 
+@app.get("/me/waitlists")
+def get_my_waitlists(current_user=Depends(get_current_user)):
+    try:
+        passenger_response = (
+            supabase.table("passenger")
+            .select("passenger_id")
+            .eq("auth_user_id", current_user.id)
+            .execute()
+        )
+        passenger_ids = [
+            row["passenger_id"] for row in passenger_response.data or []
+        ]
+        if not passenger_ids:
+            return []
+
+        waitlist_response = (
+            supabase.table("waitlist")
+            .select("*")
+            .in_("passenger_id", passenger_ids)
+            .order("joined_at", desc=True)
+            .execute()
+        )
+
+        records = []
+        for entry in waitlist_response.data or []:
+            flight_response = (
+                supabase.table("flights")
+                .select(
+                    "flight_id,flight_number,origin,destination,"
+                    "departure_time,flight_status"
+                )
+                .eq("flight_id", entry["flight_id"])
+                .limit(1)
+                .execute()
+            )
+            records.append({
+                "waitlist": entry,
+                "flight": (flight_response.data or [None])[0],
+            })
+
+        return records
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail="Unable to load waitlists") from e
+
+
 @app.post("/waitlist/promote/{flight_id}/{seat_class}")
 def promote_waitlist(
     flight_id: int,
