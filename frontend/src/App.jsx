@@ -280,10 +280,7 @@ function App() {
                 <button className="account-logout" onClick={handleSignOut} title="Log out"><LogOut size={16} /></button>
               </div>
             ) : (
-              <>
-                <button className="admin-btn" onClick={() => navigate("/login")}>Sign in</button>
-                <button className="admin-btn" onClick={() => navigate("/signup")}>Sign up</button>
-              </>
+              <button className="admin-btn" onClick={() => navigate("/login")}>Sign in</button>
             )}
           </div>
 
