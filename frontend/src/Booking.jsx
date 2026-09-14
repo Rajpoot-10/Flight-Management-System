@@ -12,11 +12,23 @@ import {
 
 import "./Booking.css";
 import { apiFetch } from "./api";
+import { useAuth } from "./AuthContext";
 import { showSuccess } from "./dialogs";
+
+function createPassengerForms(count, profile, user) {
+  return Array.from({ length: count }, (_, index) => ({
+    full_name: index === 0 ? profile?.full_name || "" : "",
+    email: index === 0 ? user?.email || "" : "",
+    phone: "",
+    passport_number: "",
+    nationality: "",
+  }));
+}
 
 function Booking() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
 
   const { flight, seatClass, passengers } = location.state || {};
   const passengerCount = Number(passengers) || 1;
@@ -215,13 +227,7 @@ function Booking() {
   };
 
   const [passengerForms, setPassengerForms] = useState(
-    Array.from({ length: passengerCount }, () => ({
-      full_name: "",
-      email: "",
-      phone: "",
-      passport_number: "",
-      nationality: "",
-    }))
+    () => createPassengerForms(passengerCount, profile, user)
   );
 
   useEffect(() => {
@@ -237,15 +243,35 @@ function Booking() {
     setConfirmingBooking(false);
 
     setPassengerForms(
-      Array.from({ length: passengerCount }, () => ({
-        full_name: "",
-        email: "",
-        phone: "",
-        passport_number: "",
-        nationality: "",
-      }))
+      createPassengerForms(passengerCount, profile, user)
     );
   }, [flight?.flight_id, seatClass, passengerCount]);
+
+  useEffect(() => {
+    const accountName = profile?.full_name || "";
+    const accountEmail = user?.email || "";
+    if (!accountName && !accountEmail) return;
+
+    setPassengerForms((current) => {
+      if (!current[0]) return current;
+
+      const firstPassenger = current[0];
+      const updatedFirstPassenger = {
+        ...firstPassenger,
+        full_name: firstPassenger.full_name || accountName,
+        email: firstPassenger.email || accountEmail,
+      };
+
+      if (
+        updatedFirstPassenger.full_name === firstPassenger.full_name
+        && updatedFirstPassenger.email === firstPassenger.email
+      ) {
+        return current;
+      }
+
+      return [updatedFirstPassenger, ...current.slice(1)];
+    });
+  }, [profile?.full_name, user?.email]);
 
   const handleSeatSelect = (seat) => {
     const alreadySelected = selectedSeats.some(
