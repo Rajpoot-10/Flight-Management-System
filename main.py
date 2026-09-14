@@ -162,6 +162,26 @@ def get_passenger_routes(origin: str | None = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/passenger/flights")
+def get_passenger_flights():
+    try:
+        now = datetime.now(timezone.utc)
+        response = (
+            supabase.table("flights")
+            .select(
+                "flight_id,flight_number,origin,destination,"
+                "departure_time,flight_status"
+            )
+            .eq("flight_status", "scheduled")
+            .gt("departure_time", now.isoformat())
+            .order("departure_time")
+            .execute()
+        )
+        return response.data or []
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/passenger/departures")
 def get_passenger_departures(origin: str, destination: str):
     try:

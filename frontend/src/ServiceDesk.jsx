@@ -7,6 +7,16 @@ import "./Operations.css";
 
 const initial = { flight_id: "", full_name: "", email: "", phone: "", passport_number: "", nationality: "", seat_class: "economy", fare_type: "flexible", target_price: "" };
 
+function formatDeparture(value) {
+    return new Intl.DateTimeFormat(undefined, {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+    }).format(new Date(value));
+}
+
 function ServiceDropdown({ value, options, onChange }) {
     const [open, setOpen] = useState(false);
     const selected = options.find((option) => option.value === value);
@@ -27,14 +37,57 @@ function ServiceDropdown({ value, options, onChange }) {
 function ServiceDesk() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { user } = useAuth();
-    const [form, setForm] = useState(initial);
+    const { user, profile } = useAuth();
+    const routeFlightId = location.state?.flight_id || location.state?.flight?.flight_id
+        || new URLSearchParams(location.search).get("flight_id") || "";
+    const [form, setForm] = useState({
+        ...initial,
+        flight_id: String(routeFlightId),
+        full_name: profile?.full_name || "",
+        email: user?.email || "",
+    });
+    const [flights, setFlights] = useState([]);
+    const [flightsLoading, setFlightsLoading] = useState(true);
     const [message, setMessage] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [waitlist, setWaitlist] = useState(null);
     const [waitlistFlight, setWaitlistFlight] = useState(null);
     const [claimId, setClaimId] = useState("");
+
+    useEffect(() => {
+        let active = true;
+        apiFetch("/passenger/flights")
+            .then((data) => {
+                if (!active) return;
+                const availableFlights = Array.isArray(data) ? data : [];
+                setFlights(availableFlights);
+                setForm((current) => ({
+                    ...current,
+                    flight_id: availableFlights.some((flight) => String(flight.flight_id) === String(current.flight_id))
+                        ? current.flight_id
+                        : "",
+                }));
+            })
+            .catch(() => {
+                if (active) setFlights([]);
+            })
+            .finally(() => {
+                if (active) setFlightsLoading(false);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        setForm((current) => ({
+            ...current,
+            full_name: current.full_name || profile?.full_name || "",
+            email: current.email || user?.email || "",
+        }));
+    }, [profile?.full_name, user?.email]);
 
     const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
     const requireAuth = () => {
@@ -47,7 +100,7 @@ function ServiceDesk() {
         event.preventDefault();
         if (!requireAuth()) return;
         try {
-            if (!Number(form.flight_id)) throw new Error("Enter a valid flight ID.");
+            if (!form.flight_id) throw new Error("Please select a flight.");
             setLoading(true);
             setError("");
             const created = await passenger();
@@ -75,7 +128,7 @@ function ServiceDesk() {
             if (!Number.isFinite(targetPrice) || targetPrice <= 0) {
                 throw new Error("Target price must be greater than 0.");
             }
-            if (!Number(form.flight_id)) throw new Error("Enter a valid flight ID.");
+            if (!form.flight_id) throw new Error("Please select a flight.");
             setLoading(true);
             setError("");
             const created = await passenger();
@@ -141,7 +194,12 @@ function ServiceDesk() {
             <section className="operation-card">
                 <form className="admin-form" onSubmit={join}>
                     <div className="form-three">
-                        <label>Flight ID<input required type="number" value={form.flight_id} onChange={(e) => update("flight_id", e.target.value)} /></label>
+                        <label>Flight<select required value={form.flight_id} onChange={(e) => update("flight_id", e.target.value)} disabled={flightsLoading}>
+                            <option value="">{flightsLoading ? "Loading flights..." : "Select a flight"}</option>
+                            {flights.map((flight) => <option key={flight.flight_id} value={String(flight.flight_id)}>
+                                {flight.flight_number} — {flight.origin} → {flight.destination} — {formatDeparture(flight.departure_time)}
+                            </option>)}
+                        </select></label>
                         <label>Cabin<ServiceDropdown value={form.seat_class} options={[{ value: "economy", label: "Economy" }, { value: "business", label: "Business" }, { value: "first", label: "First" }]} onChange={(value) => update("seat_class", value)} /></label>
                         <label>Fare type<ServiceDropdown value={form.fare_type} options={[{ value: "flexible", label: "Flexible" }, { value: "basic", label: "Basic" }]} onChange={(value) => update("fare_type", value)} /></label>
                     </div>
@@ -150,7 +208,7 @@ function ServiceDesk() {
                     <div className="admin-actions"><button className="primary-button" disabled={loading}><UserPlus size={16} /> Join waitlist</button><button type="button" className="secondary-button" disabled={loading || !form.target_price} onClick={alert}><Bell size={16} /> Track this price</button></div>
                 </form>
             </section>
-            {waitlist && <section className="operation-card waitlist-status-card"><span className="eyebrow">WAITLIST STATUS</span><h2>{waitlist.waitlist_status}</h2><p>{waitlist.waitlist_status === "waiting" && "You're currently on the waitlist."}{waitlist.waitlist_status === "offered" && "A seat is now available."}{waitlist.waitlist_status === "claimed" && "Your offer has been claimed."}{waitlist.waitlist_status === "expired" && "This offer has expired."}{waitlist.waitlist_status === "cancelled" && "Your waitlist entry was cancelled."}</p><div className="detail-grid"><div><small>Waitlist ID</small><strong>{waitlist.waitlist_id}</strong></div><div><small>Flight</small><strong>{waitlistFlight?.flight_number || waitlist.flight_id}</strong></div><div><small>Route</small><strong>{waitlistFlight ? `${waitlistFlight.origin} to ${waitlistFlight.destination}` : "-"}</strong></div><div><small>Cabin</small><strong>{waitlist.seat_class}</strong></div><div><small>Joined</small><strong>{waitlist.joined_at ? new Date(waitlist.joined_at).toLocaleString() : "-"}</strong></div>{waitlist.offer_expires_at && <div><small>Offer expires</small><strong>{new Date(waitlist.offer_expires_at).toLocaleString()}</strong></div>}</div>{waitlist.waitlist_status === "offered" && <button className="primary-button" onClick={claim} disabled={loading}>Claim offer</button>}</section>}
+            {waitlist && <section className="operation-card waitlist-status-card"><span className="eyebrow">WAITLIST STATUS</span><h2>{waitlist.waitlist_status}</h2><p>{waitlist.waitlist_status === "waiting" && "You're currently on the waitlist."}{waitlist.waitlist_status === "offered" && "A seat is now available."}{waitlist.waitlist_status === "claimed" && "Your offer has been claimed."}{waitlist.waitlist_status === "expired" && "This offer has expired."}{waitlist.waitlist_status === "cancelled" && "Your waitlist entry was cancelled."}</p><div className="detail-grid"><div><small>Waitlist ID</small><strong>{waitlist.waitlist_id}</strong></div><div><small>Flight</small><strong>{waitlistFlight?.flight_number || "-"}</strong></div><div><small>Route</small><strong>{waitlistFlight ? `${waitlistFlight.origin} to ${waitlistFlight.destination}` : "-"}</strong></div><div><small>Cabin</small><strong>{waitlist.seat_class}</strong></div><div><small>Joined</small><strong>{waitlist.joined_at ? new Date(waitlist.joined_at).toLocaleString() : "-"}</strong></div>{waitlist.offer_expires_at && <div><small>Offer expires</small><strong>{new Date(waitlist.offer_expires_at).toLocaleString()}</strong></div>}</div>{waitlist.waitlist_status === "offered" && <button className="primary-button" onClick={claim} disabled={loading}>Claim offer</button>}</section>}
             {!waitlist && <section className="operation-card"><h2>Check waitlist status</h2><div className="lookup-form"><input type="number" value={claimId} onChange={(e) => setClaimId(e.target.value)} placeholder="Waitlist ID" /><button className="primary-button" onClick={() => refreshStatus(claimId).catch((e) => setError(e.message))} disabled={!claimId || loading}>Check status</button></div></section>}
         </main>
     </div>;
