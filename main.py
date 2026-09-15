@@ -1,7 +1,7 @@
 import os
 
 import httpx
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from datetime import date, datetime, time, timedelta, timezone
 from schemas import ClassCapacityUpdate
@@ -45,6 +45,9 @@ app.add_middleware(
 )
 
 N8N_POLICY_WEBHOOK_URL = os.getenv("N8N_POLICY_WEBHOOK_URL")
+
+AI_FLIGHT_SEARCH_LIMIT = 100
+AI_CABIN_CLASSES = {"first", "business", "economy"}
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -218,6 +221,112 @@ def get_passenger_departures(origin: str, destination: str):
         return departures
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/ai/flights/search")
+def search_flights_for_ai(
+    origin: str | None = None,
+    destination: str | None = None,
+    departure_date: date | None = None,
+    cabin: str | None = None,
+    max_price: float | None = Query(default=None, ge=0),
+    flight_number: str | None = None,
+):
+    """Return passenger-safe, read-only flight data for the AeroFlow AI tool."""
+    try:
+        normalized_origin = origin.strip() if origin else None
+        normalized_destination = destination.strip() if destination else None
+        normalized_flight_number = flight_number.strip() if flight_number else None
+        normalized_cabin = cabin.strip().lower() if cabin else None
+
+        if origin is not None and not normalized_origin:
+            raise HTTPException(
+                status_code=422, detail="origin cannot be blank")
+        if destination is not None and not normalized_destination:
+            raise HTTPException(
+                status_code=422, detail="destination cannot be blank")
+        if flight_number is not None and not normalized_flight_number:
+            raise HTTPException(
+                status_code=422, detail="flight_number cannot be blank")
+        if normalized_cabin and normalized_cabin not in AI_CABIN_CLASSES:
+            raise HTTPException(status_code=422, detail="Unsupported cabin")
+
+        now = datetime.now(timezone.utc)
+        query = (
+            supabase
+            .table("flights")
+            .select(
+                "flight_id,flight_number,origin,destination,"
+                "departure_time,arrival_time,flight_status"
+            )
+            .eq("flight_status", "scheduled")
+            .gt("departure_time", now.isoformat())
+            .order("departure_time")
+            .limit(AI_FLIGHT_SEARCH_LIMIT)
+        )
+
+        if normalized_origin:
+            query = query.ilike("origin", normalized_origin)
+        if normalized_destination:
+            query = query.ilike("destination", normalized_destination)
+        if normalized_flight_number:
+            query = query.ilike("flight_number", normalized_flight_number)
+        if departure_date:
+            start_of_day = datetime.combine(
+                departure_date, time.min, tzinfo=timezone.utc)
+            end_of_day = start_of_day + timedelta(days=1)
+            query = query.gte(
+                "departure_time", max(start_of_day, now).isoformat()
+            ).lt("departure_time", end_of_day.isoformat())
+
+        flights = query.execute().data or []
+        flight_ids = [flight["flight_id"] for flight in flights]
+        if not flight_ids:
+            return {"count": 0, "flights": []}
+
+        inventory_query = (
+            supabase
+            .table("flight_class_inventory")
+            .select("flight_id,seat_class,base_fare,available_seats")
+            .in_("flight_id", flight_ids)
+            .gt("available_seats", 0)
+        )
+        if normalized_cabin:
+            inventory_query = inventory_query.eq(
+                "seat_class", normalized_cabin)
+        if max_price is not None:
+            inventory_query = inventory_query.lte("base_fare", max_price)
+
+        inventory_by_flight = {}
+        for inventory in inventory_query.execute().data or []:
+            inventory_by_flight.setdefault(inventory["flight_id"], []).append({
+                "class": inventory["seat_class"],
+                "fare": inventory["base_fare"],
+                "available_seats": inventory["available_seats"],
+            })
+
+        result = []
+        for flight in flights:
+            cabins = inventory_by_flight.get(flight["flight_id"], [])
+            if not cabins:
+                continue
+            result.append({
+                "flight_id": flight["flight_id"],
+                "flight_number": flight["flight_number"],
+                "origin": flight["origin"],
+                "destination": flight["destination"],
+                "departure_time": flight["departure_time"],
+                "arrival_time": flight["arrival_time"],
+                "status": flight["flight_status"],
+                "cabins": cabins,
+            })
+
+        return {"count": len(result), "flights": result}
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=500, detail="Flight search is temporarily unavailable")
 
 
 @app.post("/flights")
