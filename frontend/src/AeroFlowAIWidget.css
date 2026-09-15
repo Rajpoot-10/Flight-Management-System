@@ -314,6 +314,52 @@
     white-space: pre-wrap;
 }
 
+.aero-ai-markdown {
+    overflow-wrap: anywhere;
+}
+
+.aero-ai-markdown p {
+    margin: 0 0 9px;
+}
+
+.aero-ai-markdown p:last-child {
+    margin-bottom: 0;
+}
+
+.aero-ai-markdown strong {
+    color: #182230;
+    font-weight: 750;
+}
+
+.aero-ai-markdown em {
+    color: #475467;
+}
+
+.aero-ai-markdown ul,
+.aero-ai-markdown ol {
+    margin: 6px 0 9px;
+    padding-left: 19px;
+}
+
+.aero-ai-markdown li {
+    margin: 3px 0;
+    padding-left: 2px;
+}
+
+.aero-ai-markdown li>p {
+    margin: 0;
+}
+
+.aero-ai-markdown code {
+    padding: 2px 5px;
+    border: 1px solid #e1def4;
+    border-radius: 4px;
+    background: #efedfb;
+    color: #5441a5;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .9em;
+}
+
 .aero-ai-message.error .aero-ai-assistant-bubble {
     border-color: #fecdca;
     background: #fff8f7;

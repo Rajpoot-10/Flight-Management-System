@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Send, Sparkles } from "lucide-react";
 import { useLocation } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { apiFetch } from "./api";
 import "./AeroFlowAIWidget.css";
 
@@ -119,7 +121,7 @@ function AeroFlowAIWidget() {
                         </div>
                     </div>}
                     {messages.map((message, index) => <div className={`aero-ai-message ${message.role}`} key={`${message.role}-${index}`}>
-                        {message.role === "user" ? <div className="aero-ai-user-bubble">{message.content}</div> : <div className="aero-ai-assistant-row"><div className="aero-ai-small-avatar"><Sparkles size={13} /></div><div className="aero-ai-assistant-content"><strong>AeroFlow AI</strong><div className="aero-ai-assistant-bubble">{message.content}{message.role === "error" && index === messages.length - 1 && retryQuestion && <button type="button" className="aero-ai-retry" onClick={() => ask(retryQuestion)}>Retry</button>}</div></div></div>}
+                        {message.role === "user" ? <div className="aero-ai-user-bubble">{message.content}</div> : <div className="aero-ai-assistant-row"><div className="aero-ai-small-avatar"><Sparkles size={13} /></div><div className="aero-ai-assistant-content"><strong>AeroFlow AI</strong><div className="aero-ai-assistant-bubble"><ReactMarkdown className="aero-ai-markdown" remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>{message.role === "error" && index === messages.length - 1 && retryQuestion && <button type="button" className="aero-ai-retry" onClick={() => ask(retryQuestion)}>Retry</button>}</div></div></div>}
                     </div>)}
                     {loading && <div className="aero-ai-message assistant"><div className="aero-ai-assistant-row"><div className="aero-ai-small-avatar is-thinking"><Sparkles size={13} /></div><div className="aero-ai-assistant-content"><strong>AeroFlow AI</strong><div className="aero-ai-assistant-bubble aero-ai-thinking"><span>Searching airline policies</span><i /><i /><i /></div></div></div></div>}
                 </div>
